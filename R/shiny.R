@@ -14,11 +14,9 @@
 #'   containing enrichment scores. Pathways should correspond to the labels in the pathway graph.
 #' @param conditions A character vector specifying the conditions to visualize. These should match
 #'   the column names in enrichment_scores.
-#' @param mapping A data.frame containing mapping information between pathways and their
-#'   exactSource IDs. This is typically obtained from the load_default_data or
+#' @param mapping A data.frame containing mapping information between pathway names and their
+#'   IDs. This is typically obtained from the load_default_data or
 #'   load_and_preprocess_gene_sets functions.
-#' @param exactSource_to_name A named vector mapping exactSource IDs to pathway names. This
-#'   facilitates the translation between graph node identifiers and human-readable names.
 #' @param g An igraph object representing the pathway graph. Nodes should have a
 #'   label attribute corresponding to pathway names.
 #' @param gene_sets A named list where each element corresponds to a pathway and contains
@@ -41,7 +39,6 @@ run_pathway_shiny_app <- function(
     enrichment_scores,         # Data frame: pathways x conditions
     conditions,                # Character vector: conditions to visualize
     mapping,                   # Data frame: pathway to exactSource mapping
-    exactSource_to_name,       # Named vector: exactSource ID to pathway name
     g,                         # igraph object: pathway graph
     gene_sets,                 # Named list: pathway -> genes
     enrichment_limits = NULL,  # Numeric vector: c(min, max) for enrichment
@@ -213,7 +210,6 @@ run_pathway_shiny_app <- function(
           enrichment_scores = filtered_enrichment_scores(),
           conditions = selected_comparisons(),
           mapping = mapping,
-          exactSource_to_name = exactSource_to_name,
           enrichment_limits = new_enrichment_limits(),
           glyph_size = glyph_size,
           res = res,
@@ -228,10 +224,10 @@ run_pathway_shiny_app <- function(
     # Sanity Check: Ensure all pathway nodes have mappings
     observe({
       graph_names <- V(current_graph())$name
-      mapping_names <- names(exactSource_to_name)
+      mapping_names <- mapping$exactSource
       missing_mappings <- setdiff(graph_names, mapping_names)
       if (length(missing_mappings) > 0) {
-        warning(paste("Missing exactSource_to_name mappings for:", paste(missing_mappings, collapse = ", ")))
+        warning(paste("Missing mappings for:", paste(missing_mappings, collapse = ", ")))
       }
     })
 
@@ -385,7 +381,7 @@ run_pathway_shiny_app <- function(
       }
 
       # Get the pathway name from the selected node using existing mapping
-      selected_pathway <- exactSource_to_name[selected_node]  # Use exactSource_to_name to get the name
+      selected_pathway <- mapping[selected_node,exactSource]
 
       # Check if the selected node exists in the graph
       if (!(selected_node %in% V(g)$name)) {
@@ -402,7 +398,6 @@ run_pathway_shiny_app <- function(
       child_pathways <- get_child_pathways(
         parent_geneset_name = selected_pathway,
         mapping = mapping,
-        exactSource_to_name = exactSource_to_name,
         g = g
       )
 

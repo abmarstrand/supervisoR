@@ -22,7 +22,6 @@
 #' @param enrichment_scores Data frame of enrichment scores (rows are pathways, columns are conditions).
 #' @param conditions Character vector of conditions to include in the glyphs.
 #' @param mapping Data frame containing mapping information.
-#' @param exactSource_to_name Named vector mapping exactSource IDs to pathway names.
 #' @param g The pathway graph (igraph object).
 #' @param gene_sets List of gene sets used for edge calculations.
 #' @param layout The layout algorithm to use (e.g., "kk", "fr"). Default is "kk".
@@ -40,7 +39,7 @@
 #' @return A ggplot object representing the subgraph.
 #' @export
 plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
-                          mapping, exactSource_to_name, g, gene_sets = NULL,
+                          mapping, g, gene_sets = NULL,
                           layout = "kk", circular = FALSE, hide_nodes_without_enrichment = TRUE,
                           enrichment_limits = NULL, use_node_label = TRUE, reference = NULL,
                           adjust_edge_thickness = FALSE, edge_percentage_labels = FALSE, color_by_depth = FALSE,
@@ -65,7 +64,7 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
   sub_g <- induced_subgraph(g, vids = descendants)
 
   # Assign labels to subgraph vertices
-  V(sub_g)$label <- exactSource_to_name[V(sub_g)$name]
+  V(sub_g)$label <- mapping$processed_name[match(V(sub_g)$name, mapping$exactSource)]
 
   # Remove vertices with missing labels except the parent
   missing_labels <- is.na(V(sub_g)$label) & V(sub_g)$name != parent_exactSource

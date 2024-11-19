@@ -51,7 +51,6 @@ preprocessed_data <- load_and_preprocess_gene_sets(
 # Unpack the preprocessed data
 gene_sets <- preprocessed_data$gene_sets
 mapping <- preprocessed_data$mapping
-exactSource_to_name <- preprocessed_data$exactSource_to_name
 g <- preprocessed_data$pathway_graph
 ```
 
@@ -76,7 +75,6 @@ plot_subgraph(
   enrichment_scores = enrichment_scores,
   conditions = conditions,
   mapping = mapping,
-  exactSource_to_name = exactSource_to_name,
   g = g,
   gene_sets = gene_sets,
   layout = "kk",
@@ -95,7 +93,6 @@ plot_subgraph(
   enrichment_scores = enrichment_scores,
   conditions = conditions,
   mapping = mapping,
-  exactSource_to_name = exactSource_to_name,
   g = g,
   gene_sets = gene_sets,
   layout = "kk",
@@ -115,7 +112,6 @@ plot_subgraph(
   enrichment_scores = enrichment_scores,
   conditions = conditions,
   mapping = mapping,
-  exactSource_to_name = exactSource_to_name,
   g = g,
   gene_sets = gene_sets,
   layout = "kk",
@@ -138,7 +134,6 @@ plot_subgraph(
   enrichment_scores = enrichment_scores,
   conditions = conditions,
   mapping = mapping,
-  exactSource_to_name = exactSource_to_name,
   g = g,
   gene_sets = gene_sets,
   layout = "kk",
@@ -151,53 +146,6 @@ plot_subgraph(
   color_by_depth = TRUE
 )
 ```
-
-## Plotting Connected Top-Level Pathways with Overlap Filtering
-Visualize a network of top-level pathways connected based on gene overlap, allowing you to focus on pathways sharing significant gene sets.
-
-```{r}
-# Plotting a connected top-level pathway with other pathways sharing at least 10 genes
-# plot_subgraph(
-#   parent_geneset_name = "Metabolism of Lipids",
-#   enrichment_scores = enrichment_scores,
-#   conditions = conditions,
-#   mapping = mapping,
-#   exactSource_to_name = exactSource_to_name,
-#   g = g,
-#   gene_sets = gene_sets,
-#   layout = "stress",
-#   hide_nodes_without_enrichment = TRUE,
-#   enrichment_limits = NULL,
-#   use_node_label = TRUE,
-#   adjust_edge_thickness = TRUE,
-#   edge_percentage_labels = TRUE,
-#   overlap_filter = 10
-# )
-```
-
-## Plotting Connected Top-Level Pathways Relative to a Reference Condition
-Combine overlap filtering with relative enrichment to analyze pathways in the context of a reference condition.
-
-```{r}
-# plot_subgraph(
-#   parent_geneset_name = "Metabolism of Lipids",
-#   enrichment_scores = enrichment_scores,
-#   conditions = conditions,
-#   mapping = mapping,
-#   exactSource_to_name = exactSource_to_name,
-#   g = g,
-#   gene_sets = gene_sets,
-#   layout = "nicely",
-#   hide_nodes_without_enrichment = TRUE,
-#   enrichment_limits = NULL,
-#   use_node_label = TRUE,
-#   reference = "Condition.1",
-#   adjust_edge_thickness = TRUE,
-#   edge_percentage_labels = TRUE,
-#   overlap_filter = 10
-# )
-```
-
 ## Plotting a Subgraph with a Single Condition
 Focus on a single condition to explore specific pathway enrichments without the complexity of multiple comparisons.
 
@@ -208,7 +156,6 @@ plot_subgraph(
   enrichment_scores = enrichment_scores,
   conditions = "Condition.3",
   mapping = mapping,
-  exactSource_to_name = exactSource_to_name,
   g = g,
   gene_sets = gene_sets,
   layout = "fr",
@@ -224,7 +171,6 @@ If you don't know where to start, a shiny app is available to explore the pathwa
 run_pathway_shiny_app(enrichment_scores,        
                       conditions,               
                       mapping,                   
-                      exactSource_to_name,       
                       g,                         
                       gene_sets,                 
                       enrichment_limits = NULL,  

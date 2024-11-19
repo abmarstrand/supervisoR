@@ -141,7 +141,6 @@ generate_legend_plot <- function(conditions, enrichment_limits, reference = NULL
 #' @param enrichment_scores A \code{data.frame} with pathways as rows and conditions as columns, containing enrichment scores.
 #' @param conditions A character vector specifying the conditions to visualize.
 #' @param mapping A \code{data.frame} containing mapping information between pathways and their exactSource IDs.
-#' @param exactSource_to_name A named vector mapping exactSource IDs to pathway names.
 #' @param enrichment_limits Optional numeric vector of length two specifying the minimum and maximum enrichment scores for visualization.
 #' @param glyph_size Optional numeric vector specifying the width and height of glyphs in pixels. Default is \code{c(80, 60)}.
 #' @param res Optional numeric value specifying the resolution of glyph images in DPI. Default is 96.
@@ -157,7 +156,6 @@ generate_glyph_images_cached <- function(
     enrichment_scores,
     conditions,
     mapping,
-    exactSource_to_name,
     enrichment_limits = NULL,
     glyph_size = c(80, 60),
     res = 96,

@@ -8,7 +8,7 @@
 #' @importFrom msigdbr msigdbr
 #' @importFrom readr read_tsv
 #' @importFrom purrr map_chr
-#' @return A list containing gene sets, mapping data frame, exactSource to name mapping, and the pathway graph.
+#' @return A list containing gene sets, mapping data frame, and the pathway graph.
 #' @export
 load_default_data <- function() {
   msigdb_json_path <- system.file("extdata", "c2.cp.reactome.v2024.1.Hs.json", package = "supervisoR")
@@ -63,7 +63,6 @@ load_default_data <- function() {
   return(list(
     gene_sets = geneset,
     mapping = mapping,
-    exactSource_to_name = exactSource_to_name,
     pathway_graph = g,
     relations = relations
   ))
@@ -78,7 +77,7 @@ load_default_data <- function() {
 #' @param gene_sets Named list of gene sets, with pathways as names and genes as elements.
 #' @param pathways_relation Data frame with two columns: 'parent' and 'child' pathways.
 #' @param translation_layer Optional data frame with two columns: 'gene_sets_name' and 'relation_name'.
-#' @return A list containing gene sets, mapping data frame, exactSource to name mapping, and the pathway graph.
+#' @return A list containing gene sets, mapping data frame and the pathway graph.
 #' @export
 load_and_preprocess_gene_sets <- function(gene_sets, pathways_relation, translation_layer = NULL) {
   # Ensure that gene_sets is a named list
@@ -160,7 +159,6 @@ load_and_preprocess_gene_sets <- function(gene_sets, pathways_relation, translat
   return(list(
     gene_sets = gene_sets,
     mapping = mapping,
-    exactSource_to_name = exactSource_to_name,
     pathway_graph = g
   ))
 }
@@ -205,11 +203,10 @@ add_overlap_to_edges <- function(g, gene_sets) {
 #' @importFrom igraph subcomponent V
 #' @param parent_geneset_name Name of the parent geneset.
 #' @param mapping Data frame containing mapping information.
-#' @param exactSource_to_name Named vector mapping exactSource IDs to pathway names.
 #' @param g The pathway graph (igraph object).
 #' @return A character vector of child pathway names.
 #' @export
-get_child_pathways <- function(parent_geneset_name, mapping, exactSource_to_name, g) {
+get_child_pathways <- function(parent_geneset_name, mapping, g) {
   # Get the exactSource ID for the parent pathway
   parent_exactSource <- mapping$exactSource[match(parent_geneset_name, mapping$processed_name)]
   if (is.na(parent_exactSource)) {
@@ -230,9 +227,9 @@ get_child_pathways <- function(parent_geneset_name, mapping, exactSource_to_name
   descendant_exactSources <- descendant_exactSources[descendant_exactSources != parent_exactSource]
 
   # Map exactSource IDs to pathway names
-  descendant_geneset_names <- exactSource_to_name[descendant_exactSources]
+  descendant_geneset_names <- mapping[match(descendant_exactSources, mapping$exactSource),"processed_name"]
   descendant_geneset_names <- descendant_geneset_names[!is.na(descendant_geneset_names)]
 
-  return(unname(descendant_geneset_names))
+  return(descendant_geneset_names)
 }
 
