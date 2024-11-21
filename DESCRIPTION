@@ -1,14 +1,19 @@
 Package: supervisoR
 Type: Package
 Title: Pathway Enrichment Visualization
-Version: 0.1.0
-Author: Hans Adam Boegh Marstrand-Joergensen
+Version: 0.99.0
+Authors@R: person("Hans Adam Boegh", "Marstrand-Joergensen",
+  emails = adamboegh@gmail.com,
+  role = c("cre","aut"),
+  comment = c(ORCID = "0009-0005-5917-3154"))
 Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
+Description: Package enabling visualization of hierarchical pathways across many conditions.
+  Currently working with REACTOME pathways, enabling exploratory data analyses of a given parent pathway and all of it's children.
+  Works for an arbitrary number of groups (tested with n=20) and with arbitrary input data, though we reccommend using directional enrichment scores.
+  Contains both a shiny app for exploration and commands for the generation of hierarchical plots
 License: MIT
 Encoding: UTF-8
-LazyData: true
+LazyData: false
 Imports:
     jsonlite,
     msigdbr,
@@ -41,3 +46,4 @@ VignetteBuilder: knitr
 Config/testthat/edition: 3
 Depends: 
     R (>= 3.5)
+biocViews: Pathways, ShinyApps, Visualization
