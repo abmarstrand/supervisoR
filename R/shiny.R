@@ -202,7 +202,9 @@ run_pathway_shiny_app <- function(
     observe({
       withProgress(message = 'Generating Glyph Images...', value = 0, {
         g_current <- current_graph()
-
+        data_hash <- digest::digest(list(enrichment_scores = filtered_enrichment_scores(),
+                                         conditions = selected_comparisons()), algo = "md5")
+        
         # Generate glyph images with caching based on filtered enrichment scores
         glyphs <- generate_glyph_images_cached(
           g = g_current,
@@ -213,7 +215,7 @@ run_pathway_shiny_app <- function(
           enrichment_limits = new_enrichment_limits(),
           glyph_size = glyph_size,
           res = res,
-          cache_dir = cache_dir,
+          cache_dir = file.path(cache_dir,data_hash),
           progress = Progress$new(),
           force_regenerate = FALSE  # Set to TRUE to force cache invalidation
         )
@@ -381,7 +383,7 @@ run_pathway_shiny_app <- function(
       }
 
       # Get the pathway name from the selected node using existing mapping
-      selected_pathway <- mapping[selected_node,exactSource]
+      selected_pathway <- mapping[which(mapping$exactSource == selected_node),"processed_name"]
 
       # Check if the selected node exists in the graph
       if (!(selected_node %in% V(g)$name)) {
