@@ -9,7 +9,6 @@ plot_subgraph(
   enrichment_scores,
   conditions,
   mapping,
-  exactSource_to_name,
   g,
   gene_sets = NULL,
   layout = "kk",
@@ -34,8 +33,6 @@ plot_subgraph(
 \item{conditions}{Character vector of conditions to include in the glyphs.}
 
 \item{mapping}{Data frame containing mapping information.}
-
-\item{exactSource_to_name}{Named vector mapping exactSource IDs to pathway names.}
 
 \item{g}{The pathway graph (igraph object).}
 

@@ -21,9 +21,6 @@ test_that("Shiny app launches without errors", {
     exactSource = c("A", "B", "C"),
     stringsAsFactors = FALSE
   )
-
-  exactSource_to_name <- setNames(mapping$processed_name, mapping$exactSource)
-
   g <- igraph::graph_from_data_frame(pathways_relation, directed = TRUE)
 
   enrichment_scores <- data.frame(
@@ -38,7 +35,6 @@ test_that("Shiny app launches without errors", {
       enrichment_scores = enrichment_scores,
       conditions = c("Condition1", "Condition2"),
       mapping = mapping,
-      exactSource_to_name = exactSource_to_name,
       g = g,
       gene_sets = gene_sets
     ),

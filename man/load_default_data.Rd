@@ -7,7 +7,7 @@
 load_default_data()
 }
 \value{
-A list containing gene sets, mapping data frame, exactSource to name mapping, and the pathway graph.
+A list containing gene sets, mapping data frame, and the pathway graph.
 }
 \description{
 Load and preprocess gene sets

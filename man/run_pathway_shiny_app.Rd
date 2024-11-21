@@ -8,15 +8,14 @@ run_pathway_shiny_app(
   enrichment_scores,
   conditions,
   mapping,
-  exactSource_to_name,
   g,
   gene_sets,
   enrichment_limits = NULL,
   glyph_size = c(80, 60),
   res = 96,
   cache_dir = file.path(tempdir(), "glyph_cache"),
-  layout_options_plot = list(layout = "layout_with_drl", physics = FALSE, smooth = T,
-    type = "full", randomSeed = NULL, options = drl_defaults$final)
+  layout_options_plot = list(layout = "layout_with_dh", physics = FALSE, smooth = T, type
+    = "full", randomSeed = 42, options = NULL)
 )
 }
 \arguments{
@@ -26,12 +25,9 @@ containing enrichment scores. Pathways should correspond to the labels in the pa
 \item{conditions}{A character vector specifying the conditions to visualize. These should match
 the column names in enrichment_scores.}
 
-\item{mapping}{A data.frame containing mapping information between pathways and their
-exactSource IDs. This is typically obtained from the load_default_data or
+\item{mapping}{A data.frame containing mapping information between pathway names and their
+IDs. This is typically obtained from the load_default_data or
 load_and_preprocess_gene_sets functions.}
-
-\item{exactSource_to_name}{A named vector mapping exactSource IDs to pathway names. This
-facilitates the translation between graph node identifiers and human-readable names.}
 
 \item{g}{An igraph object representing the pathway graph. Nodes should have a
 label attribute corresponding to pathway names.}

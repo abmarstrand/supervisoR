@@ -18,7 +18,7 @@ load_and_preprocess_gene_sets(
 \item{translation_layer}{Optional data frame with two columns: 'gene_sets_name' and 'relation_name'.}
 }
 \value{
-A list containing gene sets, mapping data frame, exactSource to name mapping, and the pathway graph.
+A list containing gene sets, mapping data frame and the pathway graph.
 }
 \description{
 Load and preprocess gene sets and pathway relations

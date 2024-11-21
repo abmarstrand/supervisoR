@@ -10,7 +10,6 @@ generate_glyph_images_cached(
   enrichment_scores,
   conditions,
   mapping,
-  exactSource_to_name,
   enrichment_limits = NULL,
   glyph_size = c(80, 60),
   res = 96,
@@ -29,8 +28,6 @@ generate_glyph_images_cached(
 \item{conditions}{A character vector specifying the conditions to visualize.}
 
 \item{mapping}{A \code{data.frame} containing mapping information between pathways and their exactSource IDs.}
-
-\item{exactSource_to_name}{A named vector mapping exactSource IDs to pathway names.}
 
 \item{enrichment_limits}{Optional numeric vector of length two specifying the minimum and maximum enrichment scores for visualization.}
 

@@ -4,14 +4,12 @@
 \alias{get_child_pathways}
 \title{Get child pathways of a parent pathway}
 \usage{
-get_child_pathways(parent_geneset_name, mapping, exactSource_to_name, g)
+get_child_pathways(parent_geneset_name, mapping, g)
 }
 \arguments{
 \item{parent_geneset_name}{Name of the parent geneset.}
 
 \item{mapping}{Data frame containing mapping information.}
-
-\item{exactSource_to_name}{Named vector mapping exactSource IDs to pathway names.}
 
 \item{g}{The pathway graph (igraph object).}
 }

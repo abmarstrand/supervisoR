@@ -25,20 +25,18 @@ test_that("get_child_pathways retrieves correct child pathways", {
     stringsAsFactors = FALSE
   )
 
-  exactSource_to_name <- setNames(mapping$processed_name, mapping$exactSource)
-
   # Get child pathways of PathwayA
-  children <- get_child_pathways("PathwayA", mapping, exactSource_to_name, g)
+  children <- get_child_pathways("PathwayA", mapping, g)
 
   expect_equal(sort(children), sort(c("PathwayB", "PathwayC")))
 
   # Get child pathways of PathwayB
-  children_b <- get_child_pathways("PathwayB", mapping, exactSource_to_name, g)
+  children_b <- get_child_pathways("PathwayB", mapping, g)
 
   expect_equal(children_b, "PathwayC")
 
   # Get child pathways of PathwayC (should be none)
-  children_c <- get_child_pathways("PathwayC", mapping, exactSource_to_name, g)
+  children_c <- get_child_pathways("PathwayC", mapping, g)
 
   expect_equal(children_c, character(0))
 })
