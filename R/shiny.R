@@ -5,7 +5,8 @@
 #' top-level pathways and their sub-pathways, view glyphs representing enrichment scores
 #' across multiple conditions, and reset the view to the initial state.
 #'
-#' @importFrom shiny shinyApp fluidPage sidebarLayout sidebarPanel mainPanel selectInput textInput actionButton plotOutput titlePanel h4 p br reactiveVal reactive req observe withProgress Progress renderPlot showModal modalDialog observeEvent
+#' @importFrom shiny shinyApp fluidPage uiOutput tags HTML sidebarLayout sidebarPanel mainPanel selectInput selectizeInput updateSelectizeInput actionButton plotOutput titlePanel h4 p br reactiveVal reactive icon req observe withProgress Progress renderPlot showModal modalDialog observeEvent
+#' @importFrom shinyWidgets searchInput updateSearchInput 
 #' @importFrom visNetwork visIgraphLayout visNodes visEdges visOptions visEvents visNetworkOutput renderVisNetwork visInteraction visNetwork
 #' @importFrom ggplot2 ggplotGrob annotate
 #' @importFrom magrittr %>%
@@ -54,8 +55,17 @@ run_pathway_shiny_app <- function(
     options = NULL
   ) # List: Options for plot layout
 ) {
+  
+  # Prepare list of all pathways for search
+  all_pathways <- unique(mapping$processed_name)
+  names(all_pathways) <- all_pathways
+  gene_list <- unlist(gene_sets)
+  pathway_list <- rep(names(gene_sets), times = sapply(gene_sets, length))
+  genes_upper <- toupper(gene_list)  # Convert genes to uppercase for consistency
+  
+  # Now create a mapping: genes -> pathways
+  gene_to_pathways <- split(pathway_list, genes_upper)
 
-  # -----------------------------
   # 1. Define Shiny UI
   # -----------------------------
 
@@ -70,7 +80,7 @@ run_pathway_shiny_app <- function(
         # Dropdown for selecting comparisons
         selectInput(
           inputId = "selected_comparisons",
-          label = "Select Conditions:",
+          label = "Select Data:",
           choices = conditions,
           selected = conditions,  # Default is all comparisons
           multiple = TRUE
@@ -79,14 +89,34 @@ run_pathway_shiny_app <- function(
         # Dropdown for selecting reference comparison
         selectInput(
           inputId = "reference_comparison",
-          label = "Select Reference Condition:",
+          label = "Select Data as Reference:",
           choices = c("None", conditions),
           selected = "None",  # Default to "None"
           multiple = FALSE
         ),
-
-        textInput("search_pathway", "Search Pathway:", value = ""),
+        # Dropdown for finding pathways
+        selectizeInput(
+          inputId = "search_pathway",
+          label = "Search Pathway:",
+          choices = NULL,   # Choices will be populated in the server
+          selected = NULL,  # Ensure no default selection
+          multiple = FALSE,
+          options = list(
+            placeholder = 'Type to search pathways',
+            maxOptions = 5000  # Adjust as needed
+          )
+        ),
+        searchInput(
+          inputId = "gene_input",
+          label = "Search Gene:",
+          placeholder = "Enter a gene name",
+          btnSearch = icon("search"),
+          btnReset = icon("remove"),
+          width = "100%"
+        ),
+        uiOutput("pathway_select_ui"), 
         actionButton("reset", "Reset View"),
+        actionButton("back", "Back"),
         br(),
         br(),
 
@@ -106,7 +136,53 @@ run_pathway_shiny_app <- function(
       mainPanel(
         visNetworkOutput("pathway_network", height = "90vh")
       )
-    )
+    ),
+    tags$script(HTML("
+      $(window).on('resize', function() {
+        var width = $(window).width();
+        var cutoff = Math.floor(width / 300); // Adjust based on desired width per gene
+        Shiny.setInputValue('cutoff_update', cutoff, {priority: 'event'});
+      });
+      $(document).ready(function() {
+        $(window).trigger('resize'); // Trigger on load to set initial value
+      });
+    ")),
+    tags$head(
+      tags$style(HTML("
+    /* Adjust the font and background */
+    body {
+      background-color: #f8f9fa;
+      font-family: 'Arial', sans-serif;
+    }
+    /* Style the sidebar */
+    .sidebarPanel {
+      background-color: #ffffff;
+      padding: 15px;
+      border-right: 1px solid #dee2e6;
+    }
+    /* Style the main panel */
+    .mainPanel {
+      padding: 15px;
+    }
+    /* Style the action buttons */
+    .btn {
+      margin-bottom: 5px;
+    }
+    /* Style the legend plot */
+    #legend_plot {
+      border: 1px solid #dee2e6;
+      background-color: #ffffff;
+    }
+    /* Adjust font sizes */
+    h4 {
+      font-size: 18px;
+      font-weight: bold;
+    }
+    p {
+      font-size: 14px;
+    }
+  "))),
+    uiOutput("gene_modal")
   )
 
   # -----------------------------
@@ -114,9 +190,12 @@ run_pathway_shiny_app <- function(
   # -----------------------------
 
   server <- function(input, output, session) {
+    # Add a reactive cutoff value based on window size
+    cutoff <- reactiveVal(4) # Default to 4
+    
     # Identify top-level pathways: pathways with no incoming edges
     top_level_pathways <- V(g)[degree(g, mode = "in") == 0]$name
-
+    
     # Add a root node if not already present
     if (!"root" %in% V(g)$name) {
       g <<- add_vertices(g, 1, name = "root", label = "Root", color = "red")
@@ -139,9 +218,15 @@ run_pathway_shiny_app <- function(
 
     # Refresh top-level pathways to include root
     top_level_pathways <- c("root", top_level_pathways)
-
+    
     # Create a subgraph with only the root and top-level pathways
     initial_graph <- induced_subgraph(g, vids = top_level_pathways)
+    
+    # Initialize history stack
+    history <- reactiveValues(stack = list(), current = initial_graph)
+    
+    # **Initialize last_selected_node**
+    last_selected_node <- reactiveVal(NULL)
 
     # Reactive value to store the current graph state
     current_graph <- reactiveVal(initial_graph)
@@ -240,11 +325,170 @@ run_pathway_shiny_app <- function(
         V(current_graph())$name
       } else {
         # Filter nodes that contain the search term in their labels
-        matched_nodes <- V(current_graph())[grepl(search_term, tolower(V(current_graph())$label))]
+        matched_nodes <- V(current_graph())[grepl(tolower(search_term), tolower(V(current_graph())$label))]
         matched_nodes$name
       }
     })
-
+    
+    # Update the selectizeInput choices with server-side processing
+    observe({
+      updateSelectizeInput(
+        session,
+        "search_pathway",
+        choices = all_pathways,
+        selected = character(0),  # Ensure no selection is made
+        server = TRUE             # Enable server-side selectize
+      )
+    })
+    
+    # Handle search input selection
+    observeEvent(input$search_pathway, {
+      selected_pathway <- input$search_pathway
+      if (is.null(selected_pathway) || selected_pathway == "") return()
+      
+      # Get the exact_source ID of the selected pathway
+      selected_node <- mapping$exact_source[match(selected_pathway, mapping$processed_name)]
+      if (is.na(selected_node)) {
+        showModal(modalDialog(
+          title = "Pathway Not Found",
+          paste("The selected pathway", selected_pathway, "is not found in the mapping."),
+          easyClose = TRUE,
+          footer = NULL
+        ))
+        return()
+      }
+      
+      # Use the existing get_child_pathways function to find sub-pathways
+      child_pathways <- get_child_pathways(
+        parent_geneset_name = selected_pathway,
+        mapping = mapping,
+        g = g
+      )
+      
+      # Map child pathway names to exact_source IDs
+      child_exact_source <- mapping$exact_source[match(child_pathways, mapping$processed_name)]
+      child_exact_source <- child_exact_source[!is.na(child_exact_source)]
+      
+      # Include the selected node itself
+      vids <- c(selected_node, child_exact_source)
+      
+      if (length(vids) == 0) {
+        showModal(modalDialog(
+          title = "No Sub-Pathways",
+          paste("The selected pathway", selected_pathway, "has no sub-pathways."),
+          easyClose = TRUE,
+          footer = NULL
+        ))
+        return()
+      }
+      
+      # Induce subgraph with selected pathway and its children
+      sub_g <- induced_subgraph(g, vids = vids)
+      
+      # Add previous view to history stack
+      history$stack <- c(history$stack, list(current_graph()))
+      
+      # Update the current graph
+      current_graph(sub_g)
+      last_selected_node(NULL)
+      
+      # Clear the search input
+      updateSelectizeInput(session, "search_pathway", selected = character(0))
+    })
+    
+    # Reactive value to store pathways for the entered gene
+    pathways_for_gene <- reactiveVal(NULL)
+    
+    # Handle the gene search button click
+    observeEvent(input$gene_input_search, {
+      gene <- toupper(trimws(input$gene_input))
+      if (gene == "") return()
+      
+      # Look up pathways containing the gene
+      pathways <- gene_to_pathways[[gene]]
+      
+      if (is.null(pathways) || length(pathways) == 0) {
+        showModal(modalDialog(
+          title = "Gene Not Found",
+          paste("No pathways containing the gene", gene, "were found."),
+          easyClose = TRUE,
+          footer = NULL
+        ))
+        return()
+      }
+      
+      # Store pathways in reactive value
+      pathways_for_gene(pathways)
+      
+      # Update the UI to show the pathway selection input
+      output$pathway_select_ui <- renderUI({
+        selectInput(
+          inputId = "selected_pathway_from_gene",
+          label = "Select Pathway:",
+          choices = c(" "="",pathways),
+          selected = " "
+        )
+      })
+    })
+    
+    # Handle the pathway selection from gene search
+    observeEvent(input$selected_pathway_from_gene, {
+      selected_pathway <- input$selected_pathway_from_gene
+      if (is.null(selected_pathway) || selected_pathway == "") return()
+      
+      # Proceed to update the graph as in your existing pathway selection logic
+      # Get the exact_source ID of the selected pathway
+      selected_node <- mapping$exact_source[match(selected_pathway, mapping$processed_name)]
+      if (is.na(selected_node)) {
+        showModal(modalDialog(
+          title = "Pathway Not Found",
+          paste("The selected pathway", selected_pathway, "is not found in the mapping."),
+          easyClose = TRUE,
+          footer = NULL
+        ))
+        return()
+      }
+      
+      # Use the existing get_child_pathways function to find sub-pathways
+      child_pathways <- get_child_pathways(
+        parent_geneset_name = selected_pathway,
+        mapping = mapping,
+        g = g
+      )
+      
+      # Map child pathway names to exact_source IDs
+      child_exact_source <- mapping$exact_source[match(child_pathways, mapping$processed_name)]
+      child_exact_source <- child_exact_source[!is.na(child_exact_source)]
+      
+      # Include the selected node itself
+      vids <- c(selected_node, child_exact_source)
+      
+      if (length(vids) == 0) {
+        showModal(modalDialog(
+          title = "No Sub-Pathways",
+          paste("The selected pathway", selected_pathway, "has no sub-pathways."),
+          easyClose = TRUE,
+          footer = NULL
+        ))
+        return()
+      }
+      
+      # Induce subgraph with selected pathway and its children
+      sub_g <- induced_subgraph(g, vids = vids)
+      
+      # Add previous view to history stack
+      history$stack <- c(history$stack, list(current_graph()))
+      
+      # Update the current graph
+      current_graph(sub_g)
+      last_selected_node(NULL)
+      
+      # Clear the gene input and pathway selection
+      updateSearchInput(session, "gene_input", value = "")
+      pathways_for_gene(NULL)
+      output$pathway_select_ui <- renderUI(NULL)
+    })
+  
     # Render the ggplot legend
     output$legend_plot <- renderPlot({
       req(selected_comparisons(), new_enrichment_limits())
@@ -273,23 +517,33 @@ run_pathway_shiny_app <- function(
 
       # Retrieve pre-generated glyph images
       glyphs <- glyph_images()
+      
 
       # Prepare nodes data frame for visNetwork
       nodes <- data.frame(
         id = V(g_current)$name,
         label = V(g_current)$label,  # Pathway names as labels
         title = ifelse(
-          V(g_current)$name == "root",
+          V(g_current)$label == "root",
           "The Root node serves as a common parent for all top-level pathways.",
           paste(
             "Pathway:", V(g_current)$label, "<br>",
-            "Genes:", vapply(V(g_current)$label, function(x) {
+            "Genes:", sapply(V(g_current)$label, function(x) {
               if (!is.null(gene_sets[[x]])) {
-                paste(as.character(gene_sets[[x]]), collapse = ", ")
+                gene_list <- gene_sets[[x]]
+                if (length(gene_list) > 10) {
+                  # Truncate the gene list and add a clickable link
+                  paste(
+                    paste(gene_list[1:cutoff()], collapse = ", "),
+                    "... <a href='#' class='show-full-genes' data-node='", x, "'>Show more</a>"
+                  )
+                } else {
+                  paste(gene_list, collapse = ", ")
+                }
               } else {
                 "No genes available"
               }
-            }, FUN.VALUE = character(1)),
+            }),
             sep = ""
           )
         ),
@@ -326,6 +580,7 @@ run_pathway_shiny_app <- function(
       } else {
         nodes$color.background <- "lightblue"
       }
+      nodes <- nodes[order(nodes$label), ]
 
       # Prepare edges data frame for visNetwork
       edges <- igraph::as_data_frame(g_current, what = "edges")
@@ -353,15 +608,27 @@ run_pathway_shiny_app <- function(
           zoomView = TRUE,
           dragView = TRUE,
           multiselect = FALSE,
-          hoverConnectedEdges = T
+          hoverConnectedEdges = TRUE,
+          tooltipStay = 500
         ) %>%
         visEvents(
           click = "function(nodes) {
                     Shiny.setInputValue('pathway_network_selected', nodes.nodes, {priority: 'event'});
+                  }",
+          afterDrawing = "function() {
+                    // Delegate event handling to the document
+                    document.addEventListener('click', function(e) {
+                      if (e.target && e.target.classList.contains('show-full-genes')) {
+                        e.preventDefault(); // Prevent default anchor behavior
+                        var nodeName = e.target.getAttribute('data-node').trim(); // Get the data-node attribute
+                        Shiny.setInputValue('tooltip_click', nodeName, {priority: 'event'}); // Send to Shiny
+                      }
+                    });
                   }"
         )
     })
-
+    
+    
     # Observe clicks on the network
     observeEvent(input$pathway_network_selected, {
       selected_node <- input$pathway_network_selected
@@ -370,6 +637,12 @@ run_pathway_shiny_app <- function(
       if (is.null(selected_node) || length(selected_node) == 0 || selected_node == "") return()
 
       selected_node <- selected_node[1]  # Take the first selected node
+      
+      if (!is.null(last_selected_node()) && selected_node == last_selected_node()) {
+        return()
+      }
+      
+      last_selected_node(selected_node)
 
       # Prevent actions on the "root" node
       if (selected_node == "root") {
@@ -431,14 +704,67 @@ run_pathway_shiny_app <- function(
 
       # Induce subgraph with selected pathway and its children
       sub_g <- induced_subgraph(g, vids = c(selected_node, child_exact_source))
-
+      
+      # Add previous view to history stack
+      history$stack <- c(history$stack, list(current_graph()))
+      
       # Update the current graph
       current_graph(sub_g)
+      last_selected_node(NULL)
+    }, ignoreInit = TRUE)
+    
+    # Update cutoff based on window size
+    session$onFlushed(function() {
+      session$sendCustomMessage(type = "updateCutoff", message = NULL)
+    })
+    
+    observeEvent(input$back, {
+      if (length(history$stack) > 0) {
+        # Pop the last graph from the stack
+        last_graph <- tail(history$stack, 2)[[1]]
+        history$stack <- head(history$stack, -2)
+        current_graph(last_graph)
+        # Reset last_selected_node
+        last_selected_node(NULL)
+      } else {
+        # Stack is empty, can't go back further
+        showModal(modalDialog(
+          title = "No Previous View",
+          "There is no previous view to go back to.",
+          easyClose = TRUE,
+          footer = NULL
+        ))
+      }
+    })
+    
+    observeEvent(input$cutoff_update, {
+      cutoff(input$cutoff_update)
+    })
+    
+    observeEvent(input$tooltip_click, {
+      node_label <- input$tooltip_click
+      if (!is.null(node_label)) {
+        genes <- gene_sets[[node_label]]
+        showModal(
+          modalDialog(
+            title = paste("All genes in", node_label),
+            if (!is.null(genes)) {
+              paste(genes, collapse = ", ")
+            } else {
+              "No genes available for this pathway."
+            },
+            easyClose = TRUE,
+            footer = modalButton("Close")
+          )
+        )
+      }
     })
 
     # Handle the reset button to show the initial top-level pathways
     observeEvent(input$reset, {
+      history$stack <- list()  # Clear the history stack
       current_graph(initial_graph)
+      last_selected_node(NULL) # Reset last_selected_node
     })
 
     # Help Modal

@@ -35,7 +35,8 @@ Imports:
     readr,
     rlang,
     shiny,
-    visNetwork
+    visNetwork,
+    shinyWidgets
 RoxygenNote: 7.3.2
 Suggests: 
     knitr,
