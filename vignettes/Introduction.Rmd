@@ -21,7 +21,6 @@ supervisoR is an R package designed for visualizing the enrichment of biological
 # Installing and loading the package
 
 ```{r setup}
-#devtools::install("supervisoR")
 library(supervisoR)
 library(magrittr)
 ```
@@ -37,7 +36,7 @@ gene_sets <- default_data$gene_sets
 relations <- default_data$relations
 trans <- data.frame(
   gene_sets_name = default_data$mapping$processed_name,
-  relation_name = default_data$mapping$exactSource,
+  relation_name = default_data$mapping$exact_source,
   stringsAsFactors = FALSE
 )
 
@@ -67,8 +66,7 @@ conditions <- colnames(enrichment_scores)
 ## Plotting a Subgraph with Glyphs
 ```{r}
 # Define the parent pathway name
-parent_name <- "Signaling By Tgfb Family Members"    
-
+parent_name <- "Signaling By Tgfb Family Members"
 # Plotting multiple conditions
 plot_subgraph(
   parent_geneset_name = parent_name,
@@ -152,7 +150,7 @@ Focus on a single condition to explore specific pathway enrichments without the 
 ```{r}
 # Plotting a subgraph for a single condition
 plot_subgraph(
-  parent_geneset_name = "Metabolism Of Lipids" ,
+  parent_geneset_name = "Metabolism Of Lipids",
   enrichment_scores = enrichment_scores,
   conditions = "Condition.3",
   mapping = mapping,
@@ -168,15 +166,15 @@ plot_subgraph(
 ## Using a shiny app to explore the full pathway set. 
 If you don't know where to start, a shiny app is available to explore the pathway set interactively. This includes most of the options found in the static plots.
 ```{r}
-run_pathway_shiny_app(enrichment_scores,        
-                      conditions,               
-                      mapping,                   
-                      g,                         
-                      gene_sets,                 
-                      enrichment_limits = NULL,  
-                      glyph_size = c(80, 60),   
-                      res = 96
-    )
+run_pathway_shiny_app(enrichment_scores,
+  conditions,
+  mapping,
+  g,
+  gene_sets,
+  enrichment_limits = NULL,
+  glyph_size = c(80, 60),
+  res = 96
+)
 ```
 # Conclusion
 This vignette demonstrated how to use supervisoR's functions to visualize pathway enrichment data. The unified plot_subgraph function provides a flexible and efficient way to generate insightful visualizations tailored to your specific analytical needs. For more detailed information, refer to the function documentation and explore additional customization options.

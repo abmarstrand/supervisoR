@@ -5,9 +5,9 @@
 #' top-level pathways and their sub-pathways, view glyphs representing enrichment scores
 #' across multiple conditions, and reset the view to the initial state.
 #'
-#' @importFrom shiny shinyApp fluidPage sidebarLayout sidebarPanel mainPanel selectInput textInput actionButton plotOutput titlePanel h4 p br
+#' @importFrom shiny shinyApp fluidPage sidebarLayout sidebarPanel mainPanel selectInput textInput actionButton plotOutput titlePanel h4 p br reactiveVal reactive req observe withProgress Progress renderPlot showModal modalDialog observeEvent
 #' @importFrom visNetwork visIgraphLayout visNodes visEdges visOptions visEvents visNetworkOutput renderVisNetwork visInteraction visNetwork
-#' @importFrom ggplot2 ggplotGrob
+#' @importFrom ggplot2 ggplotGrob annotate
 #' @importFrom magrittr %>%
 #' @importFrom igraph degree V add_vertices induced_subgraph `V<-` add_edges drl_defaults
 #' @param enrichment_scores A data.frame with pathways as rows and conditions as columns,
@@ -36,23 +36,23 @@
 #' @return Launches a Shiny application for interactive pathway visualization.
 #' @export
 run_pathway_shiny_app <- function(
-    enrichment_scores,         # Data frame: pathways x conditions
-    conditions,                # Character vector: conditions to visualize
-    mapping,                   # Data frame: pathway to exactSource mapping
-    g,                         # igraph object: pathway graph
-    gene_sets,                 # Named list: pathway -> genes
-    enrichment_limits = NULL,  # Numeric vector: c(min, max) for enrichment
-    glyph_size = c(80, 60),    # Numeric vector: width and height of glyphs in pixels
-    res = 96,                  # Numeric: resolution of glyph images in DPI
-    cache_dir = file.path(tempdir(),"glyph_cache"), # Character: directory to store cached glyphs
-    layout_options_plot = list(
-      layout = "layout_with_dh",
-      physics = FALSE,
-      smooth = T,
-      type = "full",
-      randomSeed = 42,
-      options = NULL
-    ) # List: Options for plot layout
+  enrichment_scores,         # Data frame: pathways x conditions
+  conditions,                # Character vector: conditions to visualize
+  mapping,                   # Data frame: pathway to exact_source mapping
+  g,                         # igraph object: pathway graph
+  gene_sets,                 # Named list: pathway -> genes
+  enrichment_limits = NULL,  # Numeric vector: c(min, max) for enrichment
+  glyph_size = c(80, 60),    # Numeric vector: width and height of glyphs in pixels
+  res = 96,                  # Numeric: resolution of glyph images in DPI
+  cache_dir = file.path(tempdir(), "glyph_cache"), # Character: directory to store cached glyphs
+  layout_options_plot = list(
+    layout = "layout_with_dh",
+    physics = FALSE,
+    smooth = TRUE,
+    type = "full",
+    randomSeed = 42,
+    options = NULL
+  ) # List: Options for plot layout
 ) {
 
   # -----------------------------
@@ -65,7 +65,7 @@ run_pathway_shiny_app <- function(
     sidebarLayout(
       sidebarPanel(
         h4("Instructions"),
-        p("Use the search box below to find specific pathways. Click on a top-level pathway glyph to view its sub-pathways. Use the 'Reset View' button to return to the top-level pathways."),
+        p("Use the search box below to find specific pathways. Click on a top-level pathway glyph to view its sub-pathways. Use the 'Reset View' button to return to the top-level pathways. Use the 'Back' button to return to the previous view."),
 
         # Dropdown for selecting comparisons
         selectInput(
@@ -200,11 +200,10 @@ run_pathway_shiny_app <- function(
 
     # Pre-generate glyph images with caching and progress indication
     observe({
-      withProgress(message = 'Generating Glyph Images...', value = 0, {
+      withProgress(message = "Generating Glyph Images...", value = 0, {
         g_current <- current_graph()
         data_hash <- digest::digest(list(enrichment_scores = filtered_enrichment_scores(),
                                          conditions = selected_comparisons()), algo = "md5")
-        
         # Generate glyph images with caching based on filtered enrichment scores
         glyphs <- generate_glyph_images_cached(
           g = g_current,
@@ -215,7 +214,7 @@ run_pathway_shiny_app <- function(
           enrichment_limits = new_enrichment_limits(),
           glyph_size = glyph_size,
           res = res,
-          cache_dir = file.path(cache_dir,data_hash),
+          cache_dir = file.path(cache_dir, data_hash),
           progress = Progress$new(),
           force_regenerate = FALSE  # Set to TRUE to force cache invalidation
         )
@@ -226,7 +225,7 @@ run_pathway_shiny_app <- function(
     # Sanity Check: Ensure all pathway nodes have mappings
     observe({
       graph_names <- V(current_graph())$name
-      mapping_names <- mapping$exactSource
+      mapping_names <- mapping$exact_source
       missing_mappings <- setdiff(graph_names, mapping_names)
       if (length(missing_mappings) > 0) {
         warning(paste("Missing mappings for:", paste(missing_mappings, collapse = ", ")))
@@ -353,7 +352,8 @@ run_pathway_shiny_app <- function(
           navigationButtons = TRUE,
           zoomView = TRUE,
           dragView = TRUE,
-          multiselect = FALSE
+          multiselect = FALSE,
+          hoverConnectedEdges = T
         ) %>%
         visEvents(
           click = "function(nodes) {
@@ -383,7 +383,7 @@ run_pathway_shiny_app <- function(
       }
 
       # Get the pathway name from the selected node using existing mapping
-      selected_pathway <- mapping[which(mapping$exactSource == selected_node),"processed_name"]
+      selected_pathway <- mapping[which(mapping$exact_source == selected_node), "processed_name"]
 
       # Check if the selected node exists in the graph
       if (!(selected_node %in% V(g)$name)) {
@@ -413,16 +413,16 @@ run_pathway_shiny_app <- function(
         return()
       }
 
-      # Map child pathway names to exactSource IDs
-      child_exactSource <- mapping$exactSource[match(child_pathways, mapping$processed_name)]
+      # Map child pathway names to exact_source IDs
+      child_exact_source <- mapping$exact_source[match(child_pathways, mapping$processed_name)]
 
       # Remove any NAs resulting from unmatched pathways
-      child_exactSource <- child_exactSource[!is.na(child_exactSource)]
+      child_exact_source <- child_exact_source[!is.na(child_exact_source)]
 
-      if (length(child_exactSource) == 0) {
+      if (length(child_exact_source) == 0) {
         showModal(modalDialog(
           title = "No Valid Sub-Pathways",
-          paste("The selected pathway", selected_pathway, "has no valid sub-pathways with matching exactSource IDs."),
+          paste("The selected pathway", selected_pathway, "has no valid sub-pathways with matching exact_source IDs."),
           easyClose = TRUE,
           footer = NULL
         ))
@@ -430,7 +430,7 @@ run_pathway_shiny_app <- function(
       }
 
       # Induce subgraph with selected pathway and its children
-      sub_g <- induced_subgraph(g, vids = c(selected_node, child_exactSource))
+      sub_g <- induced_subgraph(g, vids = c(selected_node, child_exact_source))
 
       # Update the current graph
       current_graph(sub_g)
@@ -445,7 +445,9 @@ run_pathway_shiny_app <- function(
     observeEvent(input$help, {
       showModal(modalDialog(
         title = "Help",
-        "Use the search box to find specific pathways. Click on a top-level pathway glyph to view its sub-pathways. Use the 'Reset View' button to return to the top-level pathways.",
+        "Use the search box to find specific pathways. Click on a top-level pathway glyph to view its sub-pathways.
+        Use the 'Reset View' button to return to the top-level pathways.
+        Use the 'Back' button to returnt to the previous view.",
         easyClose = TRUE,
         footer = NULL
       ))

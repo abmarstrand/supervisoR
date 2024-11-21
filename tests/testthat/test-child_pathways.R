@@ -21,7 +21,7 @@ test_that("get_child_pathways retrieves correct child pathways", {
   # Define mapping
   mapping <- data.frame(
     processed_name = c("PathwayA", "PathwayB", "PathwayC"),
-    exactSource = c("A", "B", "C"),
+    exact_source = c("A", "B", "C"),
     stringsAsFactors = FALSE
   )
 

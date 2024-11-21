@@ -38,7 +38,7 @@ is_path <- function(name) {
 #' cache_path <- get_cache_directory("my_cache")
 #'
 #' @export
-get_cache_directory <- function(cache_dir =  file.path(tempdir(),"glyph_cache")) {
+get_cache_directory <- function(cache_dir =  file.path(tempdir(), "glyph_cache")) {
   if (!dir.exists(cache_dir)) {
     dir.create(cache_dir, showWarnings = FALSE, recursive = TRUE)
   }

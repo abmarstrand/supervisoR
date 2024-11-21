@@ -14,8 +14,8 @@ run_pathway_shiny_app(
   glyph_size = c(80, 60),
   res = 96,
   cache_dir = file.path(tempdir(), "glyph_cache"),
-  layout_options_plot = list(layout = "layout_with_dh", physics = FALSE, smooth = T, type
-    = "full", randomSeed = 42, options = NULL)
+  layout_options_plot = list(layout = "layout_with_dh", physics = FALSE, smooth = TRUE,
+    type = "full", randomSeed = 42, options = NULL)
 )
 }
 \arguments{

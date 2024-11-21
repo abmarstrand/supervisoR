@@ -27,7 +27,7 @@ generate_glyph_images_cached(
 
 \item{conditions}{A character vector specifying the conditions to visualize.}
 
-\item{mapping}{A \code{data.frame} containing mapping information between pathways and their exactSource IDs.}
+\item{mapping}{A \code{data.frame} containing mapping information between pathways and their exact_source IDs.}
 
 \item{enrichment_limits}{Optional numeric vector of length two specifying the minimum and maximum enrichment scores for visualization.}
 

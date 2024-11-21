@@ -18,7 +18,7 @@ test_that("Shiny app launches without errors", {
 
   mapping <- data.frame(
     processed_name = c("PathwayA", "PathwayB", "PathwayC"),
-    exactSource = c("A", "B", "C"),
+    exact_source = c("A", "B", "C"),
     stringsAsFactors = FALSE
   )
   g <- igraph::graph_from_data_frame(pathways_relation, directed = TRUE)

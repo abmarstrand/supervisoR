@@ -1,5 +1,3 @@
-# supervisoR/R/plot_subgraph.R
-
 #' Plot a Subgraph with Glyphs as Nodes
 #'
 #' Plots a subgraph with nodes represented by glyphs that visualize enrichment scores across specified conditions.
@@ -18,6 +16,7 @@
 #' @importFrom stats na.omit
 #' @importFrom magrittr %>%
 #' @importFrom colorspace scale_colour_continuous_diverging
+#' @importFrom rlang .data
 #' @param parent_geneset_name Name of the parent geneset.
 #' @param enrichment_scores Data frame of enrichment scores (rows are pathways, columns are conditions).
 #' @param conditions Character vector of conditions to include in the glyphs.
@@ -49,10 +48,10 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
     rlang::abort("Parent pathway not found in the mapping.")
   }
 
-  parent_exactSource <- mapping$exactSource[match(parent_geneset_name, mapping$processed_name)]
+  parent_exact_source <- mapping$exact_source[match(parent_geneset_name, mapping$processed_name)]
 
   # Find the parent vertex in the graph
-  parent_vertex <- which(V(g)$name == parent_exactSource)
+  parent_vertex <- which(V(g)$name == parent_exact_source)
   if (length(parent_vertex) == 0) {
     rlang::abort("Parent pathway not found in the graph.")
   }
@@ -64,10 +63,10 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
   sub_g <- induced_subgraph(g, vids = descendants)
 
   # Assign labels to subgraph vertices
-  V(sub_g)$label <- mapping$processed_name[match(V(sub_g)$name, mapping$exactSource)]
+  V(sub_g)$label <- mapping$processed_name[match(V(sub_g)$name, mapping$exact_source)]
 
   # Remove vertices with missing labels except the parent
-  missing_labels <- is.na(V(sub_g)$label) & V(sub_g)$name != parent_exactSource
+  missing_labels <- is.na(V(sub_g)$label) & V(sub_g)$name != parent_exact_source
   if (any(missing_labels)) {
     sub_g <- delete_vertices(sub_g, V(sub_g)[missing_labels])
   }
@@ -76,7 +75,7 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
   if (!is.null(enrichment_scores) && !is.null(conditions)) {
     # Adjust enrichment scores if reference is provided
     if (!is.null(reference) && reference %in% conditions) {
-      enrichment_scores <- enrichment_scores - enrichment_scores[, reference, drop = T]
+      enrichment_scores <- enrichment_scores - enrichment_scores[, reference, drop = TRUE]
       conditions <- setdiff(conditions, reference)
     }
 
@@ -105,14 +104,16 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
   if (color_by_depth) {
     distance_calc <- NULL
     E(sub_g)$distances <- 1
-    for (edge_pw in ends(sub_g,E(sub_g))[,2]) {
-      distance_calc <- c(distance_calc,igraph::distances(g,parent_exactSource,edge_pw)[[1]])
+    for (edge_pw in ends(sub_g, E(sub_g))[, 2]) {
+      distance_calc <- c(distance_calc, igraph::distances(g, parent_exact_source, edge_pw)[[1]])
     }
     E(sub_g)$distances <- distance_calc
-    edge_colors <- scale_edge_colour_viridis(option="G",aesthetics = "edge_colour",end=0.75, guide = "none")
+    edge_colors <- scale_edge_colour_viridis(option = "G", aesthetics = "edge_colour",
+                                             end = 0.75, guide = "none")
   } else {
     E(sub_g)$distances <- 1
-    edge_colors <- scale_edge_colour_continuous(low="gray50",high="gray50",aesthetics = "edge_colour", guide = "none")
+    edge_colors <- scale_edge_colour_continuous(low = "gray50", high = "gray50",
+                                                aesthetics = "edge_colour", guide = "none")
   }
 
   # Create the layout data with x and y
@@ -161,8 +162,8 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
   p <- ggraph(layout_data) +
     geom_edge_link(
       aes(
-        width = if (adjust_edge_thickness) percent_overlap else 1,
-        color = if (color_by_depth) distances else 1
+        width = if (adjust_edge_thickness) .data$percent_overlap else 1,
+        color = if (color_by_depth) .data$distances else 1
       ),
       show.legend = FALSE
     ) +
@@ -179,16 +180,18 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
 
     # Add glyphs as node images
     if (any(!is.na(layout_data$image))) {
-      p <- p + ggimage::geom_image(aes(x = x, y = y, image = image), size = glyph_size_scale, na.rm = TRUE)
+      p <- p + ggimage::geom_image(aes(x = .data$x, y = .data$y, image = .data$image),
+                                   size = glyph_size_scale, na.rm = TRUE)
     }
 
     if (any(is.na(layout_data$image))) {
       p <- p + geom_node_point(data = subset(layout_data, is.na(layout_data$image)),
-                               aes(x = x, y = y), color = "purple", size = glyph_size_scale * 25)
+                               aes(x = .data$x, y = .data$y),
+                               color = "purple", size = glyph_size_scale * 25)
     }
   } else if (single_condition && !is.null(enrichment_scores)) {
     # Plot nodes as colored dots based on enrichment score
-    p <- p + geom_node_point(aes(color = enrichment_score), size = 5)
+    p <- p + geom_node_point(aes(color = .data$enrichment_score), size = 5)
 
     # Define a continuous color scale for enrichment scores
     p <- p + scale_colour_continuous_diverging(palette = "Berlin", limits = enrichment_limits)
@@ -196,9 +199,11 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
 
   # Add node labels
   if (use_node_label) {
-    p <- p + geom_node_label(aes(label = label), size = 3, repel = TRUE)
+    p <- p + geom_node_label(aes(label = .data$label),
+                             size = 3, repel = TRUE)
   } else {
-    p <- p + geom_node_text(aes(label = label), size = 3, repel = TRUE)
+    p <- p + geom_node_text(aes(label = .data$label),
+                            size = 3, repel = TRUE)
   }
 
   # Add legend if needed
@@ -222,7 +227,7 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
     best_corner <- corners[corners$corner == legend_position, ]
   } else {
     # Calculate minimum distance from each corner to any node
-    corners$min_dist <- sapply(1:nrow(corners), function(i) {
+    corners$min_dist <- sapply(seq_len(nrow(corners)), function(i) {
       sqrt(min((node_x - corners$x[i])^2 + (node_y - corners$y[i])^2))
     })
     # Choose the corner with the maximum minimum distance

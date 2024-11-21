@@ -43,6 +43,5 @@ test_that("load_and_preprocess_gene_sets works with and without translation_laye
   expect_true(all(c("gene_sets", "mapping", "pathway_graph") %in% names(result_with_translation)))
 
   # Check mappings
-  expect_equal(result_with_translation$mapping$exactSource, c("Exact1", "Exact2"))
+  expect_equal(result_with_translation$mapping$exact_source, c("Exact1", "Exact2"))
 })
-

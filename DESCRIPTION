@@ -3,7 +3,7 @@ Type: Package
 Title: Pathway Enrichment Visualization
 Version: 0.99.0
 Authors@R: person("Hans Adam Boegh", "Marstrand-Joergensen",
-  emails = adamboegh@gmail.com,
+  email = "adamboegh@gmail.com",
   role = c("cre","aut"),
   comment = c(ORCID = "0009-0005-5917-3154"))
 Maintainer: The package maintainer <yourself@somewhere.net>

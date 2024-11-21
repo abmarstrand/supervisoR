@@ -6,6 +6,8 @@
 #' @importFrom ragg agg_png
 #' @importFrom magick image_read
 #' @importFrom colorspace scale_fill_continuous_diverging
+#' @importFrom rlang .data
+#' @importFrom grDevices dev.off
 #' @param pathway Character string representing the pathway name.
 #' @param conditions Character vector of conditions to include in the glyph.
 #' @param enrichment_scores Data frame of enrichment scores (rows are pathways, columns are conditions).
@@ -45,7 +47,9 @@ create_glyph_on_the_fly <- function(pathway, conditions, enrichment_scores, enri
   )
 
   # Create the bar plot with transparent background
-  p_plot <- ggplot(df, aes(x = Condition, y = Enrichment, fill = Enrichment)) +
+  p_plot <- ggplot(df, aes(x = .data$Condition,
+                           y = .data$Enrichment,
+                           fill = .data$Enrichment)) +
     geom_bar(stat = "identity", na.rm = TRUE) +
     scale_x_discrete(expand = expansion(0, 0)) +
     ylim(enrichment_limits) +
@@ -98,7 +102,9 @@ generate_legend_plot <- function(conditions, enrichment_limits, reference = NULL
   )
 
   # Generate the legend plot
-  legend_plot <- ggplot(legend_df, aes(x = Condition, y = Enrichment, fill = Enrichment)) +
+  legend_plot <- ggplot(legend_df, aes(x = .data$Condition,
+                                       y = .data$Enrichment,
+                                       fill = .data$Enrichment)) +
     geom_bar(stat = "identity") +
     geom_hline(yintercept = 0, color = "darkred", linewidth = 0.5) +
     scale_x_discrete(expand = expansion(0, 0)) +
@@ -140,7 +146,7 @@ generate_legend_plot <- function(conditions, enrichment_limits, reference = NULL
 #' @param gene_sets A named list where each element corresponds to a pathway and contains the associated genes.
 #' @param enrichment_scores A \code{data.frame} with pathways as rows and conditions as columns, containing enrichment scores.
 #' @param conditions A character vector specifying the conditions to visualize.
-#' @param mapping A \code{data.frame} containing mapping information between pathways and their exactSource IDs.
+#' @param mapping A \code{data.frame} containing mapping information between pathways and their exact_source IDs.
 #' @param enrichment_limits Optional numeric vector of length two specifying the minimum and maximum enrichment scores for visualization.
 #' @param glyph_size Optional numeric vector specifying the width and height of glyphs in pixels. Default is \code{c(80, 60)}.
 #' @param res Optional numeric value specifying the resolution of glyph images in DPI. Default is 96.
@@ -151,17 +157,17 @@ generate_legend_plot <- function(conditions, enrichment_limits, reference = NULL
 #' @return A named list where each name corresponds to a pathway and contains the base64-encoded image URI.
 #' @export
 generate_glyph_images_cached <- function(
-    g,
-    gene_sets,
-    enrichment_scores,
-    conditions,
-    mapping,
-    enrichment_limits = NULL,
-    glyph_size = c(80, 60),
-    res = 96,
-    cache_dir = file.path(tempdir(),"glyph_cache"),
-    progress = NULL,
-    force_regenerate = FALSE
+  g,
+  gene_sets,
+  enrichment_scores,
+  conditions,
+  mapping,
+  enrichment_limits = NULL,
+  glyph_size = c(80, 60),
+  res = 96,
+  cache_dir = file.path(tempdir(), "glyph_cache"),
+  progress = NULL,
+  force_regenerate = FALSE
 ) {
   # Initialize a list to store image URIs
   glyph_images <- list()
@@ -265,7 +271,3 @@ generate_glyph_images_cached <- function(
 
   return(glyph_images)
 }
-
-
-
-
