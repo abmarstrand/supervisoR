@@ -4,7 +4,7 @@
 #' @importFrom stringr str_to_title
 #' @importFrom igraph graph_from_data_frame V delete_vertices
 #' @importFrom magrittr %>%
-#' @importFrom dplyr select distinct
+#' @importFrom dplyr select distinct mutate rename
 #' @importFrom msigdbr msigdbr
 #' @importFrom readr read_tsv
 #' @importFrom purrr map_chr
@@ -12,9 +12,6 @@
 #' @return A list containing gene sets, mapping data frame, and the pathway graph.
 #' @export
 load_default_data <- function() {
-  msigdb_json_path <- system.file("extdata",
-                                  "c2.cp.reactome.v2024.1.Hs.json",
-                                  package = "supervisoR")
   pathways_relation_path <- system.file("extdata",
                                         "ReactomePathwaysRelation.txt",
                                         package = "supervisoR")
@@ -22,22 +19,20 @@ load_default_data <- function() {
   msigdb_init <- msigdbr(species = "Homo sapiens",
                          category = "C2",
                          subcategory = "CP:REACTOME") %>%
-    select(.data$gs_name, .data$gene_symbol) %>%
-    distinct()
+    select(.data$gs_name, .data$gs_exact_source, .data$gene_symbol) %>%
+    distinct() %>%
+    rename(name = .data$gs_name,
+           exact_source = .data$gs_exact_source,
+           gene_symbol = .data$gene_symbol)
 
-  geneset <- split(msigdb_init$gene_symbol, msigdb_init$gs_name)
+  geneset <- split(msigdb_init$gene_symbol, msigdb_init$name)
   names(geneset) <- str_to_title(gsub("REACTOME ", "", gsub("_", " ", names(geneset))))
 
-  # Read the JSON data
-  json_data <- fromJSON(msigdb_json_path)
-
-  # Create the mapping data frame
-  mapping <- data.frame(
-    name = names(json_data),
-    exact_source = map_chr(json_data, ~ .x$exactSource),
-    stringsAsFactors = FALSE
-  )
-  mapping$processed_name <- str_to_title(gsub("REACTOME ", "", gsub("_", " ", mapping$name)))
+  mapping <- msigdb_init %>%
+    select(.data$name, .data$exact_source) %>%
+    distinct() %>%
+    mutate(processed_name = str_to_title(gsub("REACTOME ", "", gsub("_", " ", .data$name)))) %>%
+    as.data.frame()
 
   # Read the parent-child relationships
   relations <- read_tsv(pathways_relation_path, col_names = FALSE)
@@ -62,7 +57,7 @@ load_default_data <- function() {
   V(g)$genes <- geneset[exact_source_to_name[V(g)$name]]
 
   # Assign genes to vertices
-  V(g)$genes <- geneset[exact_source_to_name[V(g)$name]]
+  #V(g)$genes <- geneset[exact_source_to_name[V(g)$name]]
   V(g)$genes <- lapply(V(g)$genes, function(x) if (is.null(x)) character(0) else x)
 
   return(list(

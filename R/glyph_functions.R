@@ -34,18 +34,18 @@ create_glyph_on_the_fly <- function(pathway, conditions, enrichment_scores, enri
                                     glyph_size = c(80, 60), res = 96) {
   # Get enrichment scores for the pathway and specified conditions
   scores_glyph <- enrichment_scores[pathway, conditions, drop = FALSE]
-
+  
   if (all(is.na(scores_glyph))) {
     warning(paste("All enrichment scores are NA for pathway:", pathway))
     return(NULL)
   }
-
+  
   # Convert to data frame for plotting
   df <- data.frame(
     Condition = factor(conditions, levels = conditions),
     Enrichment = as.numeric(scores_glyph[1, ])
   )
-
+  
   # Create the bar plot with transparent background
   p_plot <- ggplot(df, aes(x = .data$Condition,
                            y = .data$Enrichment,
@@ -62,7 +62,7 @@ create_glyph_on_the_fly <- function(pathway, conditions, enrichment_scores, enri
       plot.background = element_rect(fill = "transparent", color = NA),
       plot.margin = unit(c(0, 0, 0, 0), "pt")
     )
-
+  
   # Render the plot to a temporary file and read it as an image
   img_file <- tempfile(fileext = ".png")
   ragg::agg_png(
@@ -75,7 +75,7 @@ create_glyph_on_the_fly <- function(pathway, conditions, enrichment_scores, enri
   )
   print(p_plot)
   dev.off()
-
+  
   # Read the image back into R
   img <- magick::image_read(img_file)
   img_list <- list(img, img_file)
@@ -100,7 +100,7 @@ generate_legend_plot <- function(conditions, enrichment_limits, reference = NULL
     Condition = factor(conditions, levels = conditions),
     Enrichment = seq(enrichment_limits[1], enrichment_limits[2], length.out = length(conditions))
   )
-
+  
   # Generate the legend plot
   legend_plot <- ggplot(legend_df, aes(x = .data$Condition,
                                        y = .data$Enrichment,
@@ -126,7 +126,7 @@ generate_legend_plot <- function(conditions, enrichment_limits, reference = NULL
       legend.position = "none",
       plot.margin = unit(c(0, 0, 0, 0), "pt")
     )
-
+  
   return(legend_plot)
 }
 
@@ -157,24 +157,24 @@ generate_legend_plot <- function(conditions, enrichment_limits, reference = NULL
 #' @return A named list where each name corresponds to a pathway and contains the base64-encoded image URI.
 #' @export
 generate_glyph_images_cached <- function(
-  g,
-  gene_sets,
-  enrichment_scores,
-  conditions,
-  mapping,
-  enrichment_limits = NULL,
-  glyph_size = c(80, 60),
-  res = 96,
-  cache_dir = file.path(tempdir(), "glyph_cache"),
-  progress = NULL,
-  force_regenerate = FALSE
+    g,
+    gene_sets,
+    enrichment_scores,
+    conditions,
+    mapping,
+    enrichment_limits = NULL,
+    glyph_size = c(80, 60),
+    res = 96,
+    cache_dir = file.path(tempdir(), "glyph_cache"),
+    progress = NULL,
+    force_regenerate = FALSE
 ) {
   # Initialize a list to store image URIs
   glyph_images <- list()
-
+  
   # Ensure the cache directory exists
   cache_dir <- get_cache_directory(cache_dir)
-
+  
   # Compute enrichment_limits if NULL
   if (is.null(enrichment_limits)) {
     enrichment_min <- min(enrichment_scores, na.rm = TRUE)
@@ -182,16 +182,16 @@ generate_glyph_images_cached <- function(
     enrichment_limits <- c(enrichment_min, enrichment_max)
     message(paste("Computed enrichment_limits:", enrichment_min, enrichment_max))
   }
-
+  
   # Compute a hash of the enrichment_scores and conditions for cache invalidation
   data_hash <- digest::digest(list(enrichment_scores = enrichment_scores, conditions = conditions), algo = "md5")
   hash_filepath <- file.path(cache_dir, "data_hash.txt")
-
+  
   # Check if the hash file exists
   if (file.exists(hash_filepath)) {
     # Read the stored hash
     stored_hash <- readLines(hash_filepath, warn = FALSE)
-
+    
     if (length(stored_hash) > 0 && stored_hash == data_hash && !force_regenerate) {
       message("Enrichment scores unchanged. Using cached glyphs.")
       # Proceed to load glyphs from cache without regenerating
@@ -210,22 +210,22 @@ generate_glyph_images_cached <- function(
     message("No existing cache found. Generating glyphs.")
     writeLines(data_hash, con = hash_filepath)
   }
-
+  
   # Retrieve all pathways present in the graph
   pathway_nodes <- setdiff(V(g)$label, "Root")
   total_pathways <- length(pathway_nodes)
-
+  
   # Progress bar setup
   if (!is.null(progress)) {
     progress$set(message = "Generating Glyphs", value = 0)
   }
-
+  
   # Iterate over each pathway
   for (pathway in pathway_nodes) {
     # Define the file path for the glyph image
     img_filename <- paste0(sanitize_filename(pathway), ".png")
     img_filepath <- file.path(cache_dir, img_filename)
-
+    
     # Check if the image already exists in the cache
     if (file.exists(img_filepath)) {
       # Load the image and convert to base64 URI
@@ -246,11 +246,11 @@ generate_glyph_images_cached <- function(
         warning(paste("Error creating glyph for pathway:", pathway, "-", e$message))
         return(NULL)
       })
-
+      
       if (!is.null(img)) {
         # Save the image to the cache directory
         magick::image_write(img, path = img_filepath, format = "png")
-
+        
         # Convert to base64 URI
         encoded_img <- base64enc::dataURI(file = img_filepath, mime = "image/png")
         glyph_images[[pathway]] <- encoded_img
@@ -258,16 +258,16 @@ generate_glyph_images_cached <- function(
         glyph_images[[pathway]] <- NA
       }
     }
-
+    
     # Update progress if provided
     if (!is.null(progress)) {
       progress$inc(1 / total_pathways, detail = paste("Processing:", pathway))
     }
   }
-
+  
   if (!is.null(progress)) {
     progress$close()
   }
-
+  
   return(glyph_images)
 }
