@@ -8,3 +8,7 @@ BiocManager::install(c("msigdbr","igraph","ggraph","ggplot2","stringr","colorspa
   "shiny","visNetwork","shinyWidgets")
 )
 ```
+Then run the following to install supervisoR:
+```
+remotes::install_git("abmarstrand/supervisoR")
+```
