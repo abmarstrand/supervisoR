@@ -3,5 +3,8 @@ An R package for the visualization of enrichment scores in hierarchical pathway 
 
 To install the package, the following packages are needed:
 ```
-BiocManager::install(c("msigdbr","igraph","ggraph","ggplot2","stringr","colorspace","ggimage","magick","cowplot","magrittr","dplyr","ragg","base64enc","digest","progressr","readr","rlang","shiny","visNetwork","shinyWidgets"))
+BiocManager::install(c("msigdbr","igraph","ggraph","ggplot2","stringr","colorspace","ggimage",
+  "magick","cowplot","magrittr","dplyr","ragg","base64enc","digest","progressr","readr","rlang",
+  "shiny","visNetwork","shinyWidgets")
+)
 ```
