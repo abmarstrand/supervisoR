@@ -1,95 +1,80 @@
 #' Load and preprocess gene sets
 #'
-#' @importFrom jsonlite fromJSON
-#' @importFrom stringr str_to_title
-#' @importFrom igraph graph_from_data_frame V delete_vertices
-#' @importFrom magrittr %>%
+#' @importFrom stringr str_to_title str_remove str_replace_all
+#' @importFrom igraph graph_from_data_frame V
 #' @importFrom dplyr select distinct mutate rename
 #' @importFrom msigdbr msigdbr
 #' @importFrom readr read_tsv
-#' @importFrom purrr map_chr
-#' @importFrom rlang .data
+#' @importFrom magrittr %>%
 #' @param database Which database should we load data for? Currently supports 'reactome' and 'GO' corresponding to the msigdb Reactome or GOBP databases.
 #' @param species Which species should we load data for? Support species in the msigdb database, currently 'Homo sapiens' and 'Mus musculus'.
 #' @return A list containing gene sets, mapping data frame, and the pathway graph.
 #' @export
 load_default_data <- function(database="reactome", species = "Homo sapiens") {
-  if (database == "reactome") {
-    pathways_relation_path <- system.file("extdata",
-                                          "ReactomePathwaysRelation.txt",
-                                          package = "supervisoR")
-    
-    msigdb_init <- msigdbr(species = species,
-                           category = "C2",
-                           subcategory = "CP:REACTOME") %>%
-      select(.data$gs_name, .data$gs_exact_source, .data$gene_symbol) %>%
-      distinct() %>%
-      rename(name = .data$gs_name,
-             exact_source = .data$gs_exact_source,
-             gene_symbol = .data$gene_symbol)
-    
-    geneset <- split(msigdb_init$gene_symbol, msigdb_init$name)
-    names(geneset) <- str_to_title(gsub("REACTOME ", "", gsub("_", " ", names(geneset))))
-    
-    mapping <- msigdb_init %>%
-      select(.data$name, .data$exact_source) %>%
-      distinct() %>%
-      mutate(processed_name = str_to_title(gsub("REACTOME ", "", gsub("_", " ", .data$name)))) %>%
-      as.data.frame()
-    
-    # Read the parent-child relationships
-    relations <- read_tsv(pathways_relation_path, col_names = FALSE)
-    colnames(relations) <- c("parent", "child")
-    # Build the graph
-    g <- graph_from_data_frame(relations, directed = TRUE)
-    E(g)$relation <- NA
-  } else if (database == "GO") {
-    pathways_relation_path <- system.file("extdata",
-                                          "GOTermRelation.txt",
-                                          package = "supervisoR")
-    
-    msigdb_init <- msigdbr(species = species,
-                           category = "C5",
-                           subcategory = "GO:BP") %>%
-      select(.data$gs_name, .data$gs_exact_source, .data$gene_symbol) %>%
-      distinct() %>%
-      rename(name = .data$gs_name,
-             exact_source = .data$gs_exact_source,
-             gene_symbol = .data$gene_symbol)
-    
-    geneset <- split(msigdb_init$gene_symbol, msigdb_init$name)
-    names(geneset) <- str_to_title(gsub("^GOBP ", "", gsub("_", " ", names(geneset))))
-    
-    mapping <- msigdb_init %>%
-      select(.data$name, .data$exact_source) %>%
-      distinct() %>%
-      mutate(processed_name = str_to_title(gsub("^GOBP ", "", gsub("_", " ", .data$name)))) %>%
-      as.data.frame()
-    
-    # Read the parent-child relationships
-    relations <- read_tsv(pathways_relation_path, col_names = T)
-    colnames(relations) <- tolower(colnames(relations))
-    g <- graph_from_data_frame(relations, directed = TRUE)
+  if (!database %in% c("reactome", "GO")) {
+    stop("Database: ", database, " not supported by default.")
   }
-
-  # Map geneset names to exact_source IDs
-  geneset_names <- names(geneset)
-  geneset_to_exact_source <- mapping$exact_source[match(geneset_names, mapping$processed_name)]
-  names(geneset_to_exact_source) <- geneset_names
-
-  # Create reverse mapping
-  exact_source_to_name <- mapping$processed_name
-  names(exact_source_to_name) <- mapping$exact_source
-
+  
+  # Set parameters based on the database
+  params <- list(
+    reactome = list(
+      path = system.file("extdata", "ReactomePathwaysRelation.txt", package = "supervisoR"),
+      prefix = "^REACTOME ",
+      category = "C2",
+      subcategory = "CP:REACTOME"
+    ),
+    GO = list(
+      path = system.file("extdata", "GOTermRelation.txt", package = "supervisoR"),
+      prefix = "^GOBP ",
+      category = "C5",
+      subcategory = "GO:BP"
+    )
+  )
+  
+  db_params <- params[[database]]
+  
+  # Load msigdbr data
+  msigdb_init <- msigdbr(
+    species = species,
+    category = db_params$category,
+    subcategory = db_params$subcategory) %>%
+    select(gs_name, gs_exact_source, gene_symbol) %>%
+    distinct() %>%
+    rename(name = gs_name, exact_source = gs_exact_source)
+  
+  processed_names <- msigdb_init$name %>%
+    str_replace_all("_", " ") %>%
+    str_remove(db_params$prefix) %>%
+    str_to_title()
+  
+  msigdb_init <- msigdb_init %>%
+    mutate(processed_name = processed_names)
+  
+  # Create geneset
+  geneset <- split(msigdb_init$gene_symbol, msigdb_init$processed_name)
+  
+  # Create mapping
+  mapping <- msigdb_init %>%
+    select(processed_name, exact_source) %>%
+    distinct()
+  
+  # Read the parent-child relationships
+  relations <- read_tsv(db_params$path, col_names = TRUE)
+  
+  # Build the graph
+  g <- graph_from_data_frame(relations, directed = TRUE)
+  
+  # Map exact_source IDs to processed names
+  exact_source_to_name <- setNames(mapping$processed_name,mapping$exact_source)
+  
   # Assign labels to graph vertices
   V(g)$label <- exact_source_to_name[V(g)$name]
-  # Assign default labels to vertices with missing labels
-  V(g)$label[is.na(V(g)$label)] <- V(g)$name[is.na(V(g)$label)]
-  V(g)$genes <- geneset[exact_source_to_name[V(g)$name]]
-
+  missing_labels <- is.na(V(g)$label)
+  V(g)$label[missing_labels] <- V(g)$name[missing_labels]
+  
   # Assign genes to vertices
-  #V(g)$genes <- geneset[exact_source_to_name[V(g)$name]]
-  V(g)$genes <- lapply(V(g)$genes, function(x) if (is.null(x)) character(0) else x)
+  V(g)$genes <- geneset[V(g)$label]
+  V(g)$genes[sapply(V(g)$genes, is.null)] <- list(character(0))
 
   return(list(
     gene_sets = geneset,
@@ -212,18 +197,13 @@ add_overlap_to_edges <- function(g, gene_sets) {
   from_nodes <- edge_ends[, 1]
   to_nodes <- edge_ends[, 2]
 
-  from_genes_list <- gene_sets[V(g)[from_nodes]$label]
-  to_genes_list <- gene_sets[V(g)[to_nodes]$label]
-  from_genes_list <- lapply(from_genes_list, function(x) if (is.null(x)) character(0) else x)
-  to_genes_list <- lapply(to_genes_list, function(x) if (is.null(x)) character(0) else x)
-
+  from_genes_list <- V(g)$genes[match(from_nodes, V(g)$name)]
+  to_genes_list <- V(g)$genes[match(to_nodes, V(g)$name)]
 
   # Compute overlaps and percent overlaps
   overlaps <- mapply(function(from, to) length(intersect(from, to)), from_genes_list, to_genes_list)
-  from_sizes <- sapply(from_genes_list, length)
-  percent_overlaps <- (overlaps / from_sizes) * 100
-  percent_overlaps[is.na(percent_overlaps)] <- 100
-  overlaps[is.na(overlaps)] <- 1
+  from_sizes <- lengths(from_genes_list)
+  percent_overlaps <- ifelse(from_sizes > 0, (overlaps / from_sizes) * 100, 0)
 
   # Assign edge attributes
   E(g)$overlap <- overlaps
@@ -261,7 +241,7 @@ get_child_pathways <- function(parent_geneset_name, mapping, g) {
   descendant_exact_sources <- descendant_exact_sources[descendant_exact_sources != parent_exact_source]
 
   # Map exact_source IDs to pathway names
-  descendant_geneset_names <- mapping[match(descendant_exact_sources, mapping$exact_source), "processed_name"]
+  descendant_geneset_names <- mapping$processed_name[match(descendant_exact_sources, mapping$exact_source)]
   descendant_geneset_names <- descendant_geneset_names[!is.na(descendant_geneset_names)]
 
   return(descendant_geneset_names)

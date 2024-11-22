@@ -22,11 +22,14 @@ plot_subgraph(
   color_by_depth = FALSE,
   glyph_size = c(80, 60),
   res = 96,
-  legend_position = NULL
+  legend_position = NULL,
+  label_wrap_width = 40,
+  edge_arrows = TRUE,
+  repel_labels = FALSE
 )
 }
 \arguments{
-\item{parent_geneset_name}{Name of the parent geneset.}
+\item{parent_geneset_name}{Name of the parent geneset. This is used to extract the subgraph of interest.}
 
 \item{enrichment_scores}{Data frame of enrichment scores (rows are pathways, columns are conditions).}
 
@@ -61,6 +64,12 @@ plot_subgraph(
 \item{res}{Numeric value specifying the resolution of the glyph images in dpi. Default is 96.}
 
 \item{legend_position}{Optional character string ("topright", "topleft", "bottomleft" or "bottomright") determining final legend position.}
+
+\item{label_wrap_width}{Integer specifying the maximum number of characters in each line of the label. Default is 40.}
+
+\item{edge_arrows}{Logical, whether to display edges as arrows pointing from parents to children. Default is \code{TRUE}.}
+
+\item{repel_labels}{Logical, whether to repel labels to avoid overlaps. Default is \code{FALSE}. If you have a very large graph it is reccommended to try this out.}
 }
 \value{
 A ggplot object representing the subgraph.

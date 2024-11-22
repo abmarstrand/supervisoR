@@ -1,8 +1,8 @@
-
-title: "Introduction to supervisoR"
+---
+title: "Introduction to pathway visualization with supervisoR"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Introduction}
+  %\VignetteIndexEntry{Introduction to pathway visualization with supervisoR}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -26,10 +26,12 @@ library(magrittr)
 ```
 
 # Data preparation
+
 ## Loading Gene Sets and building Pathway Graph
+
 ```{r}
 # Load the default data for analyses (MsigDB REACTOME dataset or MsigDB GOBP terms). This data is already preprocessed.
-default_data <- load_default_data(database="GO", species = "Homo sapiens")
+default_data <- load_default_data(database = "reactome", species = "Homo sapiens")
 
 # Extract components from the loaded data
 gene_sets <- default_data$gene_sets
@@ -54,6 +56,7 @@ g <- preprocessed_data$pathway_graph
 ```
 
 ## Loading Example Enrichment Scores
+
 ```{r}
 # Generate example dataset. Note that the example data is randomly generated using rnorm(length(gene_sets), sd = 0.25)
 # and thus does not reflect real conditions or output from a pathway analysis.
@@ -66,7 +69,9 @@ conditions <- colnames(enrichment_scores)
 ```
 
 # Visualizing Pathways
+
 ## Plotting a Subgraph with Glyphs
+
 ```{r}
 # Define the parent pathway name. Select an example below depending on whether it is a reactome or GO graph.
 parent_name <- "Signaling By Tgfb Family Members" # REACTOME
@@ -87,7 +92,9 @@ plot_subgraph(
 ```
 
 ## Plotting multiple conditions relative to Condition 1
+
 You can visualize enrichment scores relative to a specific reference condition by specifying the reference parameter.
+
 ```{r}
 # Plotting multiple conditions relative to Condition 1
 plot_subgraph(
@@ -106,7 +113,9 @@ plot_subgraph(
 ```
 
 ## Adjusting Edge Thickness and Adding Percentage Labels
+
 Enhance the visualization by adjusting edge thickness based on gene overlap and adding percentage labels to edges.
+
 ```{r}
 # Plotting multiple conditions relative to Condition 1 with edge thickness and labels
 plot_subgraph(
@@ -127,6 +136,7 @@ plot_subgraph(
 ```
 
 ## Coloring Edges by Depth from the Root Node
+
 Further customize the plot by coloring edges based on their depth from the root node, providing additional insight into the pathway hierarchy.
 
 ```{r}
@@ -148,7 +158,9 @@ plot_subgraph(
   color_by_depth = TRUE
 )
 ```
+
 ## Plotting a Subgraph with a Single Condition
+
 Focus on a single condition to explore specific pathway enrichments without the complexity of multiple comparisons.
 
 ```{r}
@@ -163,12 +175,15 @@ plot_subgraph(
   layout = "fr",
   hide_nodes_without_enrichment = TRUE,
   enrichment_limits = NULL,
-  use_node_label = TRUE
+  use_node_label = TRUE,
+  repel = TRUE
 )
 ```
 
-## Using a shiny app to explore the full pathway set. 
+## Using a shiny app to explore the full pathway set.
+
 If you don't know where to start, a shiny app is available to explore the pathway set interactively. This includes most of the options found in the static plots.
+
 ```{r}
 run_pathway_shiny_app(enrichment_scores,
   conditions,
@@ -177,8 +192,18 @@ run_pathway_shiny_app(enrichment_scores,
   gene_sets,
   enrichment_limits = NULL,
   glyph_size = c(80, 60),
-  res = 96
+  res = 96,
+  layout_options_plot = list(
+    layout = "layout_with_kk",
+    physics = FALSE,
+    smooth = FALSE,
+    type = "full",
+    randomSeed = 42,
+    options = NULL
+  ) 
 )
 ```
+
 # Conclusion
+
 This vignette demonstrated how to use supervisoR's functions to visualize pathway enrichment data. The unified plot_subgraph function provides a flexible and efficient way to generate insightful visualizations tailored to your specific analytical needs. For more detailed information, refer to the function documentation and explore additional customization options.

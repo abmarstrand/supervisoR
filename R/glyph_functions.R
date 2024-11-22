@@ -65,7 +65,7 @@ create_glyph_on_the_fly <- function(pathway, conditions, enrichment_scores, enri
   
   # Render the plot to a temporary file and read it as an image
   img_file <- tempfile(fileext = ".png")
-  ragg::agg_png(
+  agg_png(
     filename = img_file,
     width = glyph_size[1],
     height = glyph_size[2],
@@ -77,7 +77,7 @@ create_glyph_on_the_fly <- function(pathway, conditions, enrichment_scores, enri
   dev.off()
   
   # Read the image back into R
-  img <- magick::image_read(img_file)
+  img <- image_read(img_file)
   img_list <- list(img, img_file)
   return(img_list)
 }
@@ -139,7 +139,6 @@ generate_legend_plot <- function(conditions, enrichment_limits, reference = NULL
 #' @importFrom digest digest
 #' @importFrom colorspace scale_fill_continuous_diverging
 #' @importFrom magick image_write
-#' @importFrom purrr map
 #' @importFrom dplyr if_else
 #' @importFrom progressr with_progress
 #' @param g An \code{igraph} object representing the pathway graph.
@@ -184,7 +183,7 @@ generate_glyph_images_cached <- function(
   }
   
   # Compute a hash of the enrichment_scores and conditions for cache invalidation
-  data_hash <- digest::digest(list(enrichment_scores = enrichment_scores, conditions = conditions), algo = "md5")
+  data_hash <- digest(list(enrichment_scores = enrichment_scores, conditions = conditions), algo = "md5")
   hash_filepath <- file.path(cache_dir, "data_hash.txt")
   
   # Check if the hash file exists
@@ -249,10 +248,10 @@ generate_glyph_images_cached <- function(
       
       if (!is.null(img)) {
         # Save the image to the cache directory
-        magick::image_write(img, path = img_filepath, format = "png")
+        image_write(img, path = img_filepath, format = "png")
         
         # Convert to base64 URI
-        encoded_img <- base64enc::dataURI(file = img_filepath, mime = "image/png")
+        encoded_img <- dataURI(file = img_filepath, mime = "image/png")
         glyph_images[[pathway]] <- encoded_img
       } else {
         glyph_images[[pathway]] <- NA

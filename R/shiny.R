@@ -5,12 +5,15 @@
 #' top-level pathways and their sub-pathways, view glyphs representing enrichment scores
 #' across multiple conditions, and reset the view to the initial state.
 #'
-#' @importFrom shiny shinyApp fluidPage uiOutput tags HTML sidebarLayout sidebarPanel mainPanel selectInput selectizeInput updateSelectizeInput actionButton plotOutput titlePanel h4 p br reactiveVal reactive icon req observe withProgress Progress renderPlot showModal modalDialog observeEvent
+#' @importFrom shiny shinyApp renderUI fluidPage reactiveValues modalButton uiOutput tags HTML sidebarLayout sidebarPanel mainPanel selectInput selectizeInput updateSelectizeInput actionButton plotOutput titlePanel h4 p br reactiveVal reactive icon req observe withProgress Progress renderPlot showModal modalDialog observeEvent
 #' @importFrom shinyWidgets searchInput updateSearchInput 
 #' @importFrom visNetwork visIgraphLayout visNodes visEdges visOptions visEvents visNetworkOutput renderVisNetwork visInteraction visNetwork
 #' @importFrom ggplot2 ggplotGrob annotate
+#' @importFrom stringr str_to_upper str_trim
+#' @importFrom dplyr arrange
 #' @importFrom magrittr %>%
 #' @importFrom igraph degree V add_vertices induced_subgraph `V<-` add_edges drl_defaults
+#' @importFrom utils head tail 
 #' @param enrichment_scores A data.frame with pathways as rows and conditions as columns,
 #'   containing enrichment scores. Pathways should correspond to the labels in the pathway graph.
 #' @param conditions A character vector specifying the conditions to visualize. These should match
@@ -60,7 +63,7 @@ run_pathway_shiny_app <- function(
   all_pathways <- unique(mapping$processed_name)
   names(all_pathways) <- all_pathways
   gene_list <- unlist(gene_sets)
-  pathway_list <- rep(names(gene_sets), times = sapply(gene_sets, length))
+  pathway_list <- rep(names(gene_sets), times = lengths(gene_sets))
   genes_upper <- toupper(gene_list)  # Convert genes to uppercase for consistency
   
   # Now create a mapping: genes -> pathways
@@ -70,13 +73,12 @@ run_pathway_shiny_app <- function(
   # -----------------------------
 
   ui <- fluidPage(
-    titlePanel("Pathway Visualization Shiny App"),
+    titlePanel("supervisoR Shiny App"),
 
     sidebarLayout(
       sidebarPanel(
         h4("Instructions"),
         p("Use the search box below to find specific pathways. Click on a top-level pathway glyph to view its sub-pathways. Use the 'Reset View' button to return to the top-level pathways. Use the 'Back' button to return to the previous view."),
-
         # Dropdown for selecting comparisons
         selectInput(
           inputId = "selected_comparisons",
@@ -106,6 +108,7 @@ run_pathway_shiny_app <- function(
             maxOptions = 5000  # Adjust as needed
           )
         ),
+        # Dropdown for finding pathways which contain a given gene
         searchInput(
           inputId = "gene_input",
           label = "Search Gene:",
@@ -147,41 +150,6 @@ run_pathway_shiny_app <- function(
         $(window).trigger('resize'); // Trigger on load to set initial value
       });
     ")),
-    tags$head(
-      tags$style(HTML("
-    /* Adjust the font and background */
-    body {
-      background-color: #f8f9fa;
-      font-family: 'Arial', sans-serif;
-    }
-    /* Style the sidebar */
-    .sidebarPanel {
-      background-color: #ffffff;
-      padding: 15px;
-      border-right: 1px solid #dee2e6;
-    }
-    /* Style the main panel */
-    .mainPanel {
-      padding: 15px;
-    }
-    /* Style the action buttons */
-    .btn {
-      margin-bottom: 5px;
-    }
-    /* Style the legend plot */
-    #legend_plot {
-      border: 1px solid #dee2e6;
-      background-color: #ffffff;
-    }
-    /* Adjust font sizes */
-    h4 {
-      font-size: 18px;
-      font-weight: bold;
-    }
-    p {
-      font-size: 14px;
-    }
-  "))),
     uiOutput("gene_modal")
   )
 
@@ -192,6 +160,8 @@ run_pathway_shiny_app <- function(
   server <- function(input, output, session) {
     # Add a reactive cutoff value based on window size
     cutoff <- reactiveVal(4) # Default to 4
+    last_selected_node <- reactiveVal(NULL)
+    
     
     # Identify top-level pathways: pathways with no incoming edges
     top_level_pathways <- V(g)[degree(g, mode = "in") == 0]$name
@@ -224,9 +194,6 @@ run_pathway_shiny_app <- function(
     
     # Initialize history stack
     history <- reactiveValues(stack = list(), current = initial_graph)
-    
-    # **Initialize last_selected_node**
-    last_selected_node <- reactiveVal(NULL)
 
     # Reactive value to store the current graph state
     current_graph <- reactiveVal(initial_graph)
@@ -401,7 +368,7 @@ run_pathway_shiny_app <- function(
     
     # Handle the gene search button click
     observeEvent(input$gene_input_search, {
-      gene <- toupper(trimws(input$gene_input))
+      gene <- str_to_upper(str_trim(input$gene_input))
       if (gene == "") return()
       
       # Look up pathways containing the gene
@@ -580,7 +547,7 @@ run_pathway_shiny_app <- function(
       } else {
         nodes$color.background <- "lightblue"
       }
-      nodes <- nodes[order(nodes$label), ]
+      nodes <- nodes %>% arrange(label)
 
       # Prepare edges data frame for visNetwork
       edges <- igraph::as_data_frame(g_current, what = "edges")

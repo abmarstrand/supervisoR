@@ -4,7 +4,12 @@
 \alias{load_default_data}
 \title{Load and preprocess gene sets}
 \usage{
-load_default_data()
+load_default_data(database = "reactome", species = "Homo sapiens")
+}
+\arguments{
+\item{database}{Which database should we load data for? Currently supports 'reactome' and 'GO' corresponding to the msigdb Reactome or GOBP databases.}
+
+\item{species}{Which species should we load data for? Support species in the msigdb database, currently 'Homo sapiens' and 'Mus musculus'.}
 }
 \value{
 A list containing gene sets, mapping data frame, and the pathway graph.
