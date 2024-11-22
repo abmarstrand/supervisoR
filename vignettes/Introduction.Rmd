@@ -28,8 +28,8 @@ library(magrittr)
 # Data preparation
 ## Loading Gene Sets and building Pathway Graph
 ```{r}
-# Load the default data for analyses (MsigDB human REACTOME dataset). This data is already preprocessed.
-default_data <- load_default_data()
+# Load the default data for analyses (MsigDB REACTOME dataset or MsigDB GOBP terms). This data is already preprocessed.
+default_data <- load_default_data(database="GO", species = "Homo sapiens")
 
 # Extract components from the loaded data
 gene_sets <- default_data$gene_sets
@@ -55,18 +55,22 @@ g <- preprocessed_data$pathway_graph
 
 ## Loading Example Enrichment Scores
 ```{r}
-# Load example dataset. Note that the example data was randomly generated using rnorm(length(gene_sets), sd = 0.25)
+# Generate example dataset. Note that the example data is randomly generated using rnorm(length(gene_sets), sd = 0.25)
 # and thus does not reflect real conditions or output from a pathway analysis.
-data("ex_data")
-enrichment_scores <- ex_data
+enrichment_scores <- data.frame(Condition.1 = rnorm(length(gene_sets), sd = 0.25),
+                                Condition.2 = rnorm(length(gene_sets), sd = 0.25),
+                                Condition.3 = rnorm(length(gene_sets), sd = 0.25),
+                                Condition.4 = rnorm(length(gene_sets), sd = 0.25))
+rownames(enrichment_scores) <- names(gene_sets)
 conditions <- colnames(enrichment_scores)
 ```
 
 # Visualizing Pathways
 ## Plotting a Subgraph with Glyphs
 ```{r}
-# Define the parent pathway name
-parent_name <- "Signaling By Tgfb Family Members"
+# Define the parent pathway name. Select an example below depending on whether it is a reactome or GO graph.
+parent_name <- "Signaling By Tgfb Family Members" # REACTOME
+#parent_name <- "Protein Localization To Cell Surface" #GO
 # Plotting multiple conditions
 plot_subgraph(
   parent_geneset_name = parent_name,

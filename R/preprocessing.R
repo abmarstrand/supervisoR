@@ -9,37 +9,68 @@
 #' @importFrom readr read_tsv
 #' @importFrom purrr map_chr
 #' @importFrom rlang .data
+#' @param database Which database should we load data for? Currently supports 'reactome' and 'GO' corresponding to the msigdb Reactome or GOBP databases.
+#' @param species Which species should we load data for? Support species in the msigdb database, currently 'Homo sapiens' and 'Mus musculus'.
 #' @return A list containing gene sets, mapping data frame, and the pathway graph.
 #' @export
-load_default_data <- function() {
-  pathways_relation_path <- system.file("extdata",
-                                        "ReactomePathwaysRelation.txt",
-                                        package = "supervisoR")
-
-  msigdb_init <- msigdbr(species = "Homo sapiens",
-                         category = "C2",
-                         subcategory = "CP:REACTOME") %>%
-    select(.data$gs_name, .data$gs_exact_source, .data$gene_symbol) %>%
-    distinct() %>%
-    rename(name = .data$gs_name,
-           exact_source = .data$gs_exact_source,
-           gene_symbol = .data$gene_symbol)
-
-  geneset <- split(msigdb_init$gene_symbol, msigdb_init$name)
-  names(geneset) <- str_to_title(gsub("REACTOME ", "", gsub("_", " ", names(geneset))))
-
-  mapping <- msigdb_init %>%
-    select(.data$name, .data$exact_source) %>%
-    distinct() %>%
-    mutate(processed_name = str_to_title(gsub("REACTOME ", "", gsub("_", " ", .data$name)))) %>%
-    as.data.frame()
-
-  # Read the parent-child relationships
-  relations <- read_tsv(pathways_relation_path, col_names = FALSE)
-  colnames(relations) <- c("parent", "child")
-
-  # Build the graph
-  g <- graph_from_data_frame(relations, directed = TRUE)
+load_default_data <- function(database="reactome", species = "Homo sapiens") {
+  if (database == "reactome") {
+    pathways_relation_path <- system.file("extdata",
+                                          "ReactomePathwaysRelation.txt",
+                                          package = "supervisoR")
+    
+    msigdb_init <- msigdbr(species = species,
+                           category = "C2",
+                           subcategory = "CP:REACTOME") %>%
+      select(.data$gs_name, .data$gs_exact_source, .data$gene_symbol) %>%
+      distinct() %>%
+      rename(name = .data$gs_name,
+             exact_source = .data$gs_exact_source,
+             gene_symbol = .data$gene_symbol)
+    
+    geneset <- split(msigdb_init$gene_symbol, msigdb_init$name)
+    names(geneset) <- str_to_title(gsub("REACTOME ", "", gsub("_", " ", names(geneset))))
+    
+    mapping <- msigdb_init %>%
+      select(.data$name, .data$exact_source) %>%
+      distinct() %>%
+      mutate(processed_name = str_to_title(gsub("REACTOME ", "", gsub("_", " ", .data$name)))) %>%
+      as.data.frame()
+    
+    # Read the parent-child relationships
+    relations <- read_tsv(pathways_relation_path, col_names = FALSE)
+    colnames(relations) <- c("parent", "child")
+    # Build the graph
+    g <- graph_from_data_frame(relations, directed = TRUE)
+    E(g)$relation <- NA
+  } else if (database == "GO") {
+    pathways_relation_path <- system.file("extdata",
+                                          "GOTermRelation.txt",
+                                          package = "supervisoR")
+    
+    msigdb_init <- msigdbr(species = species,
+                           category = "C5",
+                           subcategory = "GO:BP") %>%
+      select(.data$gs_name, .data$gs_exact_source, .data$gene_symbol) %>%
+      distinct() %>%
+      rename(name = .data$gs_name,
+             exact_source = .data$gs_exact_source,
+             gene_symbol = .data$gene_symbol)
+    
+    geneset <- split(msigdb_init$gene_symbol, msigdb_init$name)
+    names(geneset) <- str_to_title(gsub("^GOBP ", "", gsub("_", " ", names(geneset))))
+    
+    mapping <- msigdb_init %>%
+      select(.data$name, .data$exact_source) %>%
+      distinct() %>%
+      mutate(processed_name = str_to_title(gsub("^GOBP ", "", gsub("_", " ", .data$name)))) %>%
+      as.data.frame()
+    
+    # Read the parent-child relationships
+    relations <- read_tsv(pathways_relation_path, col_names = T)
+    colnames(relations) <- tolower(colnames(relations))
+    g <- graph_from_data_frame(relations, directed = TRUE)
+  }
 
   # Map geneset names to exact_source IDs
   geneset_names <- names(geneset)
@@ -131,7 +162,10 @@ load_and_preprocess_gene_sets <- function(gene_sets, pathways_relation, translat
 
   complete_mapping$processed_name <- ifelse(
     is.na(complete_mapping$processed_name),
-    str_to_title(gsub("_", " ", gsub("^REACTOME_", "", complete_mapping$exact_source))),
+    ifelse(grepl("REACTOME",complete_mapping$exact_source[1]),
+           str_to_title(gsub("_", " ", gsub("^REACTOME_", "", complete_mapping$exact_source))),
+           str_to_title(gsub("_", " ", gsub("^GOBP_", "", complete_mapping$exact_source)))
+    ),
     complete_mapping$processed_name
   )
 
