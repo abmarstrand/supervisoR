@@ -67,6 +67,8 @@ run_pathway_shiny_app <- function(
   genes_upper <- toupper(gene_list)  # Convert genes to uppercase for consistency
   # Now create a mapping: genes -> pathways
   gene_to_pathways <- split(pathway_list, genes_upper)
+  all_genes <- sort(unique(names(gene_to_pathways)))  # all uppercase gene names
+  enriched_pathways <- all_pathways[all_pathways %in% rownames(enrichment_scores)]
 
   # 1. Define Shiny UI
   # -----------------------------
@@ -107,14 +109,20 @@ run_pathway_shiny_app <- function(
           )
         ),
         # Dropdown for finding pathways which contain a given gene
-        searchInput(
+        selectizeInput(
           inputId = "gene_input",
           label = "Search Gene:",
-          placeholder = "Enter a gene name",
-          btnSearch = icon("search"),
-          btnReset = icon("remove"),
-          width = "100%"
+          choices = NULL,             # Provide all genes to select from
+          selected = "",
+          multiple = FALSE,
+          options = list(
+            placeholder = 'Type to search for a gene',
+            maxOptions = 5000,              # Adjust as needed
+            create = FALSE,                 # Disallow creating new entries
+            highlight = TRUE
+          )
         ),
+        actionButton("gene_input_search", "Search Gene"),
         uiOutput("pathway_select_ui"), 
         actionButton("reset", "Reset View"),
         actionButton("back", "Back"),
@@ -306,10 +314,15 @@ run_pathway_shiny_app <- function(
     
     # Update the selectizeInput choices with server-side processing
     observe({
+      updateSelectizeInput(session, 
+                           choices = all_genes, 
+                           "gene_input",
+                           selected = "",
+                           server = TRUE)
       updateSelectizeInput(
         session,
         "search_pathway",
-        choices = all_pathways,
+        choices = enriched_pathways,
         selected = "",  # Ensure no selection is made
         server = TRUE             # Enable server-side selectize
       )
@@ -372,7 +385,10 @@ run_pathway_shiny_app <- function(
     pathways_for_gene <- reactiveVal(NULL)
     
     # Handle the gene search button click
+    # Handle the gene search button click
     observeEvent(input$gene_input_search, {
+      ### CHANGES START
+      # Convert gene to uppercase and trim whitespace
       gene_input_value <- input$gene_input
       if (is.null(gene_input_value) || length(gene_input_value) == 0) {
         gene <- ""
@@ -395,18 +411,34 @@ run_pathway_shiny_app <- function(
         return()
       }
       
-      # Store pathways in reactive value
-      pathways_for_gene(pathways)
+      # Filter pathways so that only those present in the original graph are shown
+      # Map processed_name to exact_source, then check if exact_source is in V(g)$name
+      valid_nodes <- V(g)$name
+      exact_sources <- mapping$exact_source[match(pathways, mapping$processed_name)]
+      valid_pathways <- pathways[exact_sources %in% valid_nodes]
+      
+      if (length(valid_pathways) == 0) {
+        showModal(modalDialog(
+          title = "No Valid Pathways",
+          paste("No pathways containing the gene", gene, "exist in the original graph."),
+          easyClose = TRUE
+        ))
+        return()
+      }
+      
+      # Store only valid pathways
+      pathways_for_gene(valid_pathways)
       
       # Update the UI to show the pathway selection input
       output$pathway_select_ui <- renderUI({
         selectInput(
           inputId = "selected_pathway_from_gene",
-          label = "Select Pathway:",
-          choices = c(" " = "",pathways),
+          label = "Pathways containing selected gene:",
+          choices = c(" " = "", valid_pathways),
           selected = " "
         )
       })
+      ### CHANGES END
     })
     
     # Handle the pathway selection from gene search
@@ -414,7 +446,6 @@ run_pathway_shiny_app <- function(
       selected_pathway <- input$selected_pathway_from_gene
       if (is.null(selected_pathway) || selected_pathway == "") return()
       
-      # Proceed to update the graph as in your existing pathway selection logic
       # Get the exact_source ID of the selected pathway
       selected_node <- mapping$exact_source[match(selected_pathway, mapping$processed_name)]
       if (is.na(selected_node)) {
@@ -426,18 +457,16 @@ run_pathway_shiny_app <- function(
         return()
       }
       
-      # Use the existing get_child_pathways function to find sub-pathways
+      # Use get_child_pathways to find sub-pathways
       child_pathways <- get_child_pathways(
         parent_geneset_name = selected_pathway,
         mapping = mapping,
         g = g
       )
       
-      # Map child pathway names to exact_source IDs
       child_exact_source <- mapping$exact_source[match(child_pathways, mapping$processed_name)]
       child_exact_source <- child_exact_source[!is.na(child_exact_source)]
       
-      # Include the selected node itself
       vids <- c(selected_node, child_exact_source)
       
       if (length(vids) == 0) {
@@ -450,18 +479,14 @@ run_pathway_shiny_app <- function(
         return()
       }
       
-      # Induce subgraph with selected pathway and its children
       sub_g <- induced_subgraph(g, vids = vids)
       
-      # Add previous view to history stack
       history$stack <- c(history$stack, list(current_graph()))
-      
-      # Update the current graph
       current_graph(sub_g)
       last_selected_node(NULL)
       
-      # Clear the gene input and pathway selection
-      updateSearchInput(session, "gene_input", value = "")
+      # Clear the gene input and pathway selection UI
+      updateSelectizeInput(session, "gene_input", selected = "", server = TRUE)
       pathways_for_gene(NULL)
       output$pathway_select_ui <- renderUI(NULL)
     })
@@ -476,10 +501,10 @@ run_pathway_shiny_app <- function(
       
       relation_colors <- c(
         "is_a" = "black",
-        "part_of" = "blue",
-        "regulates" = "green",
-        "positively_regulates" = "orange",
-        "negatively_regulates" = "red"
+        "part_of" = "darkcyan",
+        "regulates" = "orange",
+        "positively_regulates" = "steelblue",
+        "negatively_regulates" = "salmon"
       )
       
       relation_linetypes <- c(
@@ -633,10 +658,10 @@ run_pathway_shiny_app <- function(
       # Define colors for each relation
       relation_colors <- c(
         "is_a" = "black",
-        "part_of" = "blue",
-        "regulates" = "green",
-        "positively_regulates" = "orange",
-        "negatively_regulates" = "red"
+        "part_of" = "darkcyan",
+        "regulates" = "orange",
+        "positively_regulates" = "steelblue",
+        "negatively_regulates" = "salmon"
       )
       
       # In your renderVisNetwork block:
@@ -647,6 +672,10 @@ run_pathway_shiny_app <- function(
       edges$linetype <- ifelse(is.na(edges$relation) | edges$relation == "is_a",
                                "solid",
                                relation_values[edges$relation])
+      #Make dotted lines a bit thicker
+      edges$width <- ifelse(is.na(edges$relation) | edges$relation == "is_a",
+                               1,
+                               2)
       
       # Assign dash patterns based on the determined linetype
       edges$dashes <- sapply(edges$linetype, function(lt) line_patterns[[lt]])
@@ -658,11 +687,16 @@ run_pathway_shiny_app <- function(
                             relation_colors[edges$relation])
       
       # Now keep only needed columns for visNetwork
-      edges <- edges[, c("from", "to", "color", "dashes"), drop = FALSE]
+      edges <- edges[, c("from", "to", "color", "dashes", "width"), drop = FALSE]
+      
+      arrow_dir <- ifelse(grepl("GO",V(g)[1]$name), "from", "to")
 
       # Create visNetwork object with layout
       visNetwork(nodes, edges, height = "800px", width = "100%") %>%
-        visEdges(arrows = "to") %>%  # Add arrows to edges for directionality
+        visEdges(arrows = arrow_dir,
+                 smooth = c(enabled = T,
+                            type = "curvedCCW",
+                            roundness = 0.8)) %>%  # Add arrows to edges for directionality
         visNodes(
           shapeProperties = list(useImageSize = TRUE),
           shadow = FALSE,

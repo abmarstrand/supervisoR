@@ -177,7 +177,8 @@ generate_relation_legend <- function(relations_present,
     geom_segment(aes(x = x - 0.4, xend = x + 0.4, y = y, yend = y,
                      color = I(color), linetype = linetype), size = 1) +
     geom_text(aes(x = x, y = y - 0.3, label = relation),
-              color = "black", size = 4, hjust = 0.5) +
+              color = "black", size = 5, hjust = 0.5,
+              fontface = "bold") +
     theme_minimal(base_size = 10) +
     theme(
       panel.grid = element_blank(),
