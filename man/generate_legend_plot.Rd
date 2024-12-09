@@ -2,7 +2,7 @@
 % Please edit documentation in R/glyph_functions.R
 \name{generate_legend_plot}
 \alias{generate_legend_plot}
-\title{Create a enrichment score legend.}
+\title{Create an Enrichment Score Legend}
 \usage{
 generate_legend_plot(conditions, enrichment_limits, reference = NULL)
 }
@@ -14,8 +14,10 @@ generate_legend_plot(conditions, enrichment_limits, reference = NULL)
 \item{reference}{Optional string describing which conditions should be used as a reference.}
 }
 \value{
-A ggplot object representing the legend.
+A ggplot object representing the enrichment legend.
 }
 \description{
 Generates a legend of enrichment scores across specified conditions.
+This plot displays enrichment scores for each condition on a bar scale
+and indicates the enrichment limits and any reference condition if provided.
 }

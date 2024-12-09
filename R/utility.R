@@ -8,7 +8,7 @@
 #' sanitize_filename("path/to/file name with spaces.txt")
 #' @export
 sanitize_filename <- function(name) {
-  name <- gsub("[^A-Za-z0-9_]", "_", name)
+  name <- gsub("[^A-Za-z0-9_\\-]", "_", name)
   return(name)
 }
 

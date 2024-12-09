@@ -83,25 +83,25 @@ create_glyph_on_the_fly <- function(pathway, conditions, enrichment_scores, enri
 }
 
 
-#' Create a enrichment score legend.
+#' Create an Enrichment Score Legend
 #'
 #' Generates a legend of enrichment scores across specified conditions.
+#' This plot displays enrichment scores for each condition on a bar scale
+#' and indicates the enrichment limits and any reference condition if provided.
 #'
-#' @importFrom ggplot2 ggplot aes geom_bar theme_minimal theme element_text element_blank element_rect unit
-#' @importFrom colorspace  scale_fill_continuous_diverging
+#' @importFrom ggplot2 ggplot aes geom_bar theme_minimal theme element_text element_blank element_rect unit geom_hline
+#' @importFrom colorspace scale_fill_continuous_diverging
 #' @param conditions Character vector of conditions to include in the glyph.
 #' @param enrichment_limits Numeric vector of length 2 specifying the enrichment limits.
 #' @param reference Optional string describing which conditions should be used as a reference.
-#' @return A ggplot object representing the legend.
+#' @return A ggplot object representing the enrichment legend.
 #' @export
 generate_legend_plot <- function(conditions, enrichment_limits, reference = NULL) {
-  # Create a data frame for the legend
   legend_df <- data.frame(
     Condition = factor(conditions, levels = conditions),
     Enrichment = seq(enrichment_limits[1], enrichment_limits[2], length.out = length(conditions))
   )
   
-  # Generate the legend plot
   legend_plot <- ggplot(legend_df, aes(x = .data$Condition,
                                        y = .data$Enrichment,
                                        fill = .data$Enrichment)) +
@@ -113,7 +113,9 @@ generate_legend_plot <- function(conditions, enrichment_limits, reference = NULL
       limits = enrichment_limits,
       name = "Enrichment"
     ) +
-    ylab(ifelse(reference == "None" | is.null(reference), "Enrichment Score", paste0("Enrichment Score\nRelative to\n", reference))) +
+    ylab(ifelse(is.null(reference) || reference == "None",
+                "Enrichment Score",
+                paste0("Enrichment Score\nRelative to\n", reference))) +
     ggtitle("Legend") +
     theme_minimal(base_size = 9) +
     theme(
@@ -124,11 +126,72 @@ generate_legend_plot <- function(conditions, enrichment_limits, reference = NULL
       axis.ticks = element_blank(),
       panel.grid = element_blank(),
       legend.position = "none",
-      plot.margin = unit(c(0, 0, 0, 0), "pt")
+      plot.margin = unit(c(5, 5, 5, 5), "pt")
     )
   
   return(legend_plot)
 }
+
+#' Generate Relation Legend Plot
+#'
+#' Creates a standalone legend plot depicting the line types and colors associated
+#' with different pathway relations. This plot can be combined with the enrichment
+#' legend plot using \code{cowplot::plot_grid()} to display a unified legend.
+#'
+#' @importFrom ggplot2 ggplot aes geom_segment geom_text theme_minimal theme element_blank element_text unit coord_cartesian
+#' @param relations_present A character vector of relations that are present in the current dataset (excluding NA).
+#' @param relation_colors A named character vector mapping each relation to a color.
+#' @param relation_linetypes A named character vector mapping each relation to a valid ggplot2 linetype
+#'   (e.g., "solid", "dashed", "dotted", "dotdash", "longdash").
+#' @return A ggplot object representing the relation legend. Each relation is shown with its corresponding line style and color.
+#' @export
+generate_relation_legend <- function(relations_present,
+                                     relation_colors = c(
+                                       "is_a" = "black",
+                                       "part_of" = "blue",
+                                       "regulates" = "green",
+                                       "positively_regulates" = "orange",
+                                       "negatively_regulates" = "red"
+                                     ),
+                                     relation_linetypes = c(
+                                       "is_a" = "solid",
+                                       "part_of" = "dashed",
+                                       "regulates" = "dotted",
+                                       "positively_regulates" = "dotdash",
+                                       "negatively_regulates" = "longdash"
+                                     )) {
+  # Create a data frame for plotting the relations
+  df <- data.frame(
+    relation = relations_present,
+    x = 1,
+    y = seq_along(relations_present),
+    color = relation_colors[relations_present],
+    linetype = relation_linetypes[relations_present],
+    stringsAsFactors = FALSE
+  )
+  
+  # Reverse the order so the first relation appears at the top
+  df$y <- rev(df$y)
+  
+  rel_plot <- ggplot(df, aes(x = x, y = y)) +
+    geom_segment(aes(x = x - 0.4, xend = x + 0.4, y = y, yend = y,
+                     color = I(color), linetype = linetype), size = 1) +
+    geom_text(aes(x = x, y = y - 0.3, label = relation),
+              color = "black", size = 4, hjust = 0.5) +
+    theme_minimal(base_size = 10) +
+    theme(
+      panel.grid = element_blank(),
+      axis.title = element_blank(),
+      axis.text = element_blank(),
+      axis.ticks = element_blank(),
+      legend.position = "none",
+      plot.margin = unit(c(5, 5, 5, 5), "pt")
+    ) +
+    coord_cartesian(clip = "off")
+  
+  return(rel_plot)
+}
+
 
 #' Generate Glyph Images with Caching
 #'
@@ -186,27 +249,27 @@ generate_glyph_images_cached <- function(
   data_hash <- digest(list(enrichment_scores = enrichment_scores, conditions = conditions), algo = "md5")
   hash_filepath <- file.path(cache_dir, "data_hash.txt")
   
+  # Check if we should regenerate glyphs
+  regenerate <- TRUE
   # Check if the hash file exists
   if (file.exists(hash_filepath)) {
-    # Read the stored hash
     stored_hash <- readLines(hash_filepath, warn = FALSE)
-    
     if (length(stored_hash) > 0 && stored_hash == data_hash && !force_regenerate) {
       message("Enrichment scores unchanged. Using cached glyphs.")
-      # Proceed to load glyphs from cache without regenerating
+      regenerate <- FALSE
     } else {
       message("Enrichment scores changed or force_regenerate is TRUE. Regenerating glyphs.")
-      # Invalidate cache by removing existing glyphs
-      png_files <- list.files(cache_dir, pattern = "\\.png$", full.names = TRUE)
-      if (length(png_files) > 0) {
-        file.remove(png_files)
-      }
-      # Update the hash file
-      writeLines(data_hash, con = hash_filepath)
     }
   } else {
-    # Hash file doesn't exist, create it
     message("No existing cache found. Generating glyphs.")
+  }
+  
+  if (regenerate) {
+    # Invalidate old cache
+    png_files <- list.files(cache_dir, pattern = "\\.png$", full.names = TRUE)
+    if (length(png_files) > 0) {
+      file.remove(png_files)
+    }
     writeLines(data_hash, con = hash_filepath)
   }
   
@@ -225,13 +288,7 @@ generate_glyph_images_cached <- function(
     img_filename <- paste0(sanitize_filename(pathway), ".png")
     img_filepath <- file.path(cache_dir, img_filename)
     
-    # Check if the image already exists in the cache
-    if (file.exists(img_filepath)) {
-      # Load the image and convert to base64 URI
-      encoded_img <- base64enc::dataURI(file = img_filepath, mime = "image/png")
-      glyph_images[[pathway]] <- encoded_img
-    } else {
-      # Create glyph image
+    if (!file.exists(img_filepath) || regenerate) {
       img <- tryCatch({
         create_glyph_on_the_fly(
           pathway = pathway,
@@ -247,15 +304,16 @@ generate_glyph_images_cached <- function(
       })
       
       if (!is.null(img)) {
-        # Save the image to the cache directory
         image_write(img, path = img_filepath, format = "png")
-        
-        # Convert to base64 URI
-        encoded_img <- dataURI(file = img_filepath, mime = "image/png")
+        encoded_img <- base64enc::dataURI(file = img_filepath, mime = "image/png")
         glyph_images[[pathway]] <- encoded_img
       } else {
         glyph_images[[pathway]] <- NA
       }
+    } else {
+      # Use cached image
+      encoded_img <- base64enc::dataURI(file = img_filepath, mime = "image/png")
+      glyph_images[[pathway]] <- encoded_img
     }
     
     # Update progress if provided

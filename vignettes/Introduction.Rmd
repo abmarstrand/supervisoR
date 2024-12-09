@@ -36,13 +36,15 @@ default_data <- load_default_data(database = "reactome", species = "Homo sapiens
 # Extract components from the loaded data
 gene_sets <- default_data$gene_sets
 relations <- default_data$relations
+
+# Create translation layer mapping (EXAMPLE, NOT NECESSARY WHEN USING DEFAULT DATA)
 trans <- data.frame(
   gene_sets_name = default_data$mapping$processed_name,
   relation_name = default_data$mapping$exact_source,
   stringsAsFactors = FALSE
 )
 
-# Preprocess gene sets using the mapping and relations
+# Preprocess gene sets using the mapping and relations (EXAMPLE, NOT NECESSARY WHEN USING DEFAULT DATA)
 preprocessed_data <- load_and_preprocess_gene_sets(
   gene_sets = gene_sets,
   pathways_relation = relations,
@@ -58,8 +60,7 @@ g <- preprocessed_data$pathway_graph
 ## Loading Example Enrichment Scores
 
 ```{r}
-# Generate example dataset. Note that the example data is randomly generated using rnorm(length(gene_sets), sd = 0.25)
-# and thus does not reflect real conditions or output from a pathway analysis.
+# Generate example dataset. Note that the example data is randomly generated using rnorm(length(gene_sets), sd = 0.25) and thus does not reflect real conditions or output from a pathway analysis.
 enrichment_scores <- data.frame(Condition.1 = rnorm(length(gene_sets), sd = 0.25),
                                 Condition.2 = rnorm(length(gene_sets), sd = 0.25),
                                 Condition.3 = rnorm(length(gene_sets), sd = 0.25),
@@ -75,7 +76,7 @@ conditions <- colnames(enrichment_scores)
 ```{r}
 # Define the parent pathway name. Select an example below depending on whether it is a reactome or GO graph.
 parent_name <- "Signaling By Tgfb Family Members" # REACTOME
-#parent_name <- "Protein Localization To Cell Surface" #GO
+#parent_name <- "Polysaccharide Metabolic Process" #GO
 # Plotting multiple conditions
 plot_subgraph(
   parent_geneset_name = parent_name,
@@ -206,4 +207,4 @@ run_pathway_shiny_app(enrichment_scores,
 
 # Conclusion
 
-This vignette demonstrated how to use supervisoR's functions to visualize pathway enrichment data. The unified plot_subgraph function provides a flexible and efficient way to generate insightful visualizations tailored to your specific analytical needs. For more detailed information, refer to the function documentation and explore additional customization options.
+This vignette demonstrated how to use supervisoR's functions to visualize pathway enrichment data. The unified plot_subgraph function provides a flexible and efficient way to generate visualizations for a specific subset of pathways. the run_pathway_shiny_app function provides a broader, interactive exploration of pathway regulation.

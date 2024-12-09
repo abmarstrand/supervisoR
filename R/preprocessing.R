@@ -1,7 +1,7 @@
 #' Load and preprocess gene sets
 #'
 #' @importFrom stringr str_to_title str_remove str_replace_all
-#' @importFrom igraph graph_from_data_frame V
+#' @importFrom igraph graph_from_data_frame V vertex edges
 #' @importFrom dplyr select distinct mutate rename
 #' @importFrom msigdbr msigdbr
 #' @importFrom readr read_tsv
@@ -61,21 +61,72 @@ load_default_data <- function(database="reactome", species = "Homo sapiens") {
   # Read the parent-child relationships
   relations <- read_tsv(db_params$path, col_names = TRUE)
   
-  # Build the graph
+  # Ensure 'relation' column is present
+  # If not present (Reactome), create it and set to NA
+  if (!"relation" %in% names(relations)) {
+    relations$relation <- NA_character_
+  }
+  
+  # Identify intermediate nodes: appear in relations but not in mapping$exact_source
+  all_nodes <- unique(c(relations$parent, relations$child))
+  known_nodes <- mapping$exact_source
+  intermediates <- setdiff(all_nodes, known_nodes)
+  
+  # If there are intermediates, flatten the hierarchy in a vectorized manner
+  if (length(intermediates) > 0) {
+    # For each intermediate node, we want to connect its parents directly to its children
+    # 1. Find all parents of intermediates
+    child_is_intermediate <- relations$child %in% intermediates
+    parents_by_intermediate <- tapply(relations$parent[child_is_intermediate],
+                                      relations$child[child_is_intermediate], unique)
+    
+    # 2. Find all children of intermediates
+    parent_is_intermediate <- relations$parent %in% intermediates
+    children_by_intermediate <- tapply(relations$child[parent_is_intermediate],
+                                       relations$parent[parent_is_intermediate], unique)
+    
+    # 3. Remove all edges involving intermediate nodes
+    relations <- relations[!(relations$parent %in% intermediates | relations$child %in% intermediates), ]
+    
+    # 4. For each intermediate node, create direct parent-child links
+    new_edges_list <- lapply(names(parents_by_intermediate), function(node) {
+      node_parents <- parents_by_intermediate[[node]]
+      node_children <- children_by_intermediate[[node]]
+      if (!is.null(node_children) && length(node_parents) > 0 && length(node_children) > 0) {
+        # Include the 'relation' column here as well, set to NA
+        expand.grid(parent = node_parents, child = node_children, relation = NA_character_, stringsAsFactors = FALSE)
+      } else {
+        # Return a zero-row data frame with the correct columns
+        data.frame(parent = character(0),
+                   child = character(0),
+                   relation = character(0),
+                   stringsAsFactors = FALSE)
+      }
+    })
+    
+    # Filter out any NULL entries
+    new_edges_list <- Filter(function(x) !is.null(x), new_edges_list)
+    
+    if (length(new_edges_list) > 0) {
+      new_edges <- do.call(rbind, new_edges_list)
+      # Add and remove duplicates
+      relations <- unique(rbind(relations, new_edges))
+    }
+  }
+  
+  # Build the final graph
   g <- graph_from_data_frame(relations, directed = TRUE)
   
   # Map exact_source IDs to processed names
-  exact_source_to_name <- setNames(mapping$processed_name,mapping$exact_source)
+  exact_source_to_name <- setNames(mapping$processed_name, mapping$exact_source)
   
   # Assign labels to graph vertices
   V(g)$label <- exact_source_to_name[V(g)$name]
-  missing_labels <- is.na(V(g)$label)
-  V(g)$label[missing_labels] <- V(g)$name[missing_labels]
   
   # Assign genes to vertices
   V(g)$genes <- geneset[V(g)$label]
   V(g)$genes[sapply(V(g)$genes, is.null)] <- list(character(0))
-
+  
   return(list(
     gene_sets = geneset,
     mapping = mapping,
@@ -84,9 +135,11 @@ load_default_data <- function(database="reactome", species = "Homo sapiens") {
   ))
 }
 
+
+
 #' Load and preprocess gene sets and pathway relations
 #'
-#' @importFrom igraph graph_from_data_frame V
+#' @importFrom igraph graph_from_data_frame V vertex edges
 #' @importFrom dplyr left_join rename
 #' @importFrom stats setNames
 #' @importFrom stringr str_to_title
@@ -221,28 +274,42 @@ add_overlap_to_edges <- function(g, gene_sets) {
 #' @return A character vector of child pathway names.
 #' @export
 get_child_pathways <- function(parent_geneset_name, mapping, g) {
+  # Check that parent_geneset_name is length 1 and valid
+  if (length(parent_geneset_name) == 0) {
+    stop("No parent_geneset_name provided or it is an empty vector.")
+  }
+  
   # Get the exact_source ID for the parent pathway
-  parent_exact_source <- mapping$exact_source[match(parent_geneset_name, mapping$processed_name)]
-  if (is.na(parent_exact_source)) {
+  parent_indices <- match(parent_geneset_name, mapping$processed_name)
+  
+  # If no match was found
+  if (length(parent_indices) == 0 || is.na(parent_indices)) {
     stop("Parent pathway not found in the mapping.")
   }
-
+  
+  parent_exact_source <- mapping$exact_source[parent_indices]
+  
+  # Check if parent_exact_source is missing
+  if (length(parent_exact_source) == 0 || is.na(parent_exact_source)) {
+    stop("Parent pathway not found in the mapping.")
+  }
+  
   # Find the parent vertex in the graph
   parent_vertex <- which(V(g)$name == parent_exact_source)
   if (length(parent_vertex) == 0) {
     stop("Parent pathway not found in the graph.")
   }
-
+  
   # Get all descendants (children) of the parent pathway
   descendants <- subcomponent(g, v = parent_vertex, mode = "out")
-
+  
   # Exclude the parent itself
   descendant_exact_sources <- V(g)$name[descendants]
   descendant_exact_sources <- descendant_exact_sources[descendant_exact_sources != parent_exact_source]
-
+  
   # Map exact_source IDs to pathway names
   descendant_geneset_names <- mapping$processed_name[match(descendant_exact_sources, mapping$exact_source)]
   descendant_geneset_names <- descendant_geneset_names[!is.na(descendant_geneset_names)]
-
+  
   return(descendant_geneset_names)
 }

@@ -5,7 +5,7 @@
 #' and efficient plotting even with a large number of conditions.
 #'
 #' @importFrom igraph subcomponent induced_subgraph V delete_vertices ends `V<-` E `E<-` distances
-#' @importFrom ggraph ggraph create_layout geom_edge_link geom_node_label geom_node_text scale_edge_colour_continuous scale_edge_colour_viridis scale_edge_width geom_node_point circle 
+#' @importFrom ggraph ggraph create_layout geom_edge_link geom_node_label geom_node_text scale_edge_colour_continuous scale_edge_colour_viridis scale_edge_width geom_node_point circle scale_edge_linetype_manual
 #' @importFrom ggplot2 theme_void ggplotGrob geom_label expansion ylim xlim xlab ylab ggtitle
 #' @importFrom cowplot draw_grob ggdraw 
 #' @importFrom ggimage geom_image
@@ -118,7 +118,7 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
   layout_data <- create_layout(sub_g, layout = layout, circular = circular)
   
   # Wrap labels to specified width
-  layout_data$wrapped_label <- stringr::str_wrap(layout_data$label, width = label_wrap_width)
+  layout_data$wrapped_label <- str_wrap(layout_data$label, width = label_wrap_width)
   
   # Determine if we have a single condition
   single_condition <- length(conditions) == 1
@@ -158,13 +158,25 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
     layout_data$enrichment_score <- enrichment_scores[V(sub_g)$label, single_condition_name]
   }
   
+  relation_values <- c(
+    "is_a" = "solid",
+    "part_of" = "dashed",
+    "regulates" = "dotted",
+    "positively_regulates" = "dotdash",
+    "negatively_regulates" = "longdash"
+  )
+  
+  # Edges with NA or unknown relations get solid
+  E(sub_g)$relation <- factor(E(sub_g)$relation, levels = names(relation_values))
+  
   # Create the ggraph plot with layout_data
   p <- ggraph(layout_data) +
     geom_edge_link(
       aes(
         width = if (adjust_edge_thickness) percent_overlap else 1,
         color = if (color_by_depth) distances else 1,
-        label = if (edge_percentage_labels) paste0(round(percent_overlap, 1), "%") else NA
+        label = if (edge_percentage_labels) paste0(round(percent_overlap, 1), "%") else NA,
+        linetype = relation
       ),
       show.legend = FALSE,
       arrow = if (edge_arrows) grid::arrow(length = unit(0.005, "npc"), type = "open") else NULL,
@@ -177,7 +189,8 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
     ) +
     scale_edge_width(range = c(0.5, 2)) +
     theme_void() +
-    edge_colors
+    edge_colors +
+    scale_edge_linetype_manual(values = relation_values, na.value = "solid") 
   
   if (!single_condition && !is.null(enrichment_scores) && !is.null(conditions)) {
     # Adjust glyph size based on number of nodes
