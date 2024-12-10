@@ -8,7 +8,7 @@ generate_relation_legend(
   relations_present,
   relation_colors = c(is_a = "black", part_of = "darkcyan", regulates = "orange",
     positively_regulates = "steelblue", negatively_regulates = "salmon"),
-  relation_values = c(is_a = "solid", part_of = "dashed", regulates = "dotted",
+  relation_linetypes = c(is_a = "solid", part_of = "dashed", regulates = "dotted",
     positively_regulates = "dotdash", negatively_regulates = "longdash"),
   textsize = 5
 )
@@ -20,6 +20,8 @@ generate_relation_legend(
 
 \item{relation_linetypes}{A named character vector mapping each relation to a valid ggplot2 linetype
 (e.g., "solid", "dashed", "dotted", "dotdash", "longdash").}
+
+\item{textsize}{Numeric value specifying the size of the relation labels. Default is 5.}
 }
 \value{
 A ggplot object representing the relation legend. Each relation is shown with its corresponding line style and color.

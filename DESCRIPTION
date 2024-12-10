@@ -2,7 +2,7 @@ Package: supervisoR
 Type: Package
 Title: Pathway Enrichment Visualization
 Version: 0.99.0
-Authors@R: person("Hans Adam Boegh", "Marstrand-Joergensen",
+Author: person("Hans Adam Boegh", "Marstrand-Joergensen",
   email = "adamboegh@gmail.com",
   role = c("cre","aut"),
   comment = c(ORCID = "0009-0005-5917-3154"))
@@ -46,4 +46,5 @@ VignetteBuilder: knitr
 Config/testthat/edition: 3
 Depends: 
     R (>= 3.5)
-biocViews: Pathways, ShinyApps, Visualization
+URL: https://github.com/abmarstrand/supervisoR
+BugReports: https://github.com/abmarstrand/supervisoR/issues

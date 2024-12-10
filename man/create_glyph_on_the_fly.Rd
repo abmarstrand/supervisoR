@@ -34,7 +34,7 @@ Generates a glyph for a single pathway by creating a bar plot of enrichment scor
 }
 \examples{
 # Example usage:
-\dontrun{
+\donttest{
 pathway <- "Pathway1"
 conditions <- c("Condition1", "Condition2")
 enrichment_scores <- data.frame(

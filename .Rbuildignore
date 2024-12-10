@@ -1,6 +1,6 @@
+^my_cache\/
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^supervisoR\.Rproj
 ^\.github$
 ^LICENSE\.md$
-^my_cache$

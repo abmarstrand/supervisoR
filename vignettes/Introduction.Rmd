@@ -10,7 +10,11 @@ vignette: >
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  fig.width = 10,
+  fig.height = 10,
+  fig.retina = 3, 
+  out.width = "100%"
 )
 ```
 
@@ -76,7 +80,7 @@ conditions <- colnames(enrichment_scores)
 ```{r}
 # Define the parent pathway name. Select an example below depending on whether it is a reactome or GO graph.
 parent_name <- "Signaling By Tgfb Family Members" # REACTOME
-#parent_name <- "Polysaccharide Metabolic Process" #GO
+# parent_name <- "Polysaccharide Metabolic Process" #GO
 # Plotting multiple conditions
 plot_subgraph(
   parent_geneset_name = parent_name,
@@ -156,12 +160,34 @@ plot_subgraph(
   repel = TRUE
 )
 ```
+## Plotting a Subgraph with a Single Condition, up to three links from the root
+
+Focus on a single condition to explore specific pathway enrichments without the complexity of multiple comparisons. Here we limit the graph depth to 2
+
+```{r}
+# Plotting a subgraph for a single condition
+plot_subgraph(
+  parent_geneset_name = "Metabolism Of Lipids",
+  enrichment_scores = enrichment_scores,
+  conditions = "Condition.3",
+  mapping = mapping,
+  g = g,
+  gene_sets = gene_sets,
+  layout = "fr",
+  hide_nodes_without_enrichment = TRUE,
+  enrichment_limits = NULL,
+  use_node_label = TRUE,
+  repel = TRUE,
+  max_depth = 2
+)
+```
+
 
 ## Using a shiny app to explore the full pathway set.
 
 If you don't know where to start, a shiny app is available to explore the pathway set interactively. This includes most of the options found in the static plots.
 
-```{r}
+```{r, out.width = "200%"}
 run_pathway_shiny_app(enrichment_scores,
   conditions,
   mapping,
@@ -177,7 +203,7 @@ run_pathway_shiny_app(enrichment_scores,
     type = "full",
     randomSeed = 42,
     options = NULL
-  ) 
+  )
 )
 ```
 

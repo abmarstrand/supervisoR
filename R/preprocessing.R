@@ -10,11 +10,11 @@
 #' @param species Which species should we load data for? Support species in the msigdb database, currently 'Homo sapiens' and 'Mus musculus'.
 #' @return A list containing gene sets, mapping data frame, and the pathway graph.
 #' @export
-load_default_data <- function(database="reactome", species = "Homo sapiens") {
+load_default_data <- function(database = "reactome",
+                              species = "Homo sapiens") {
   if (!database %in% c("reactome", "GO")) {
-    stop("Database: ", database, " not supported by default.")
+    stop(paste0("Database: ", database, " not supported by default."))
   }
-  
   # Set parameters based on the database
   params <- list(
     reactome = list(
@@ -30,9 +30,7 @@ load_default_data <- function(database="reactome", species = "Homo sapiens") {
       subcategory = "GO:BP"
     )
   )
-  
   db_params <- params[[database]]
-  
   # Load msigdbr data
   msigdb_init <- msigdbr(
     species = species,
@@ -41,37 +39,37 @@ load_default_data <- function(database="reactome", species = "Homo sapiens") {
     select(gs_name, gs_exact_source, gene_symbol) %>%
     distinct() %>%
     rename(name = gs_name, exact_source = gs_exact_source)
-  
+
   processed_names <- msigdb_init$name %>%
     str_replace_all("_", " ") %>%
     str_remove(db_params$prefix) %>%
     str_to_title()
-  
+
   msigdb_init <- msigdb_init %>%
     mutate(processed_name = processed_names)
-  
+
   # Create geneset
   geneset <- split(msigdb_init$gene_symbol, msigdb_init$processed_name)
-  
+
   # Create mapping
   mapping <- msigdb_init %>%
     select(processed_name, exact_source) %>%
     distinct()
-  
+
   # Read the parent-child relationships
   relations <- read_tsv(db_params$path, col_names = TRUE)
-  
+
   # Ensure 'relation' column is present
   # If not present (Reactome), create it and set to NA
   if (!"relation" %in% names(relations)) {
     relations$relation <- NA_character_
   }
-  
+
   # Identify intermediate nodes: appear in relations but not in mapping$exact_source
   all_nodes <- unique(c(relations$parent, relations$child))
   known_nodes <- mapping$exact_source
   intermediates <- setdiff(all_nodes, known_nodes)
-  
+
   # If there are intermediates, flatten the hierarchy in a vectorized manner
   if (length(intermediates) > 0) {
     # For each intermediate node, we want to connect its parents directly to its children
@@ -79,15 +77,12 @@ load_default_data <- function(database="reactome", species = "Homo sapiens") {
     child_is_intermediate <- relations$child %in% intermediates
     parents_by_intermediate <- tapply(relations$parent[child_is_intermediate],
                                       relations$child[child_is_intermediate], unique)
-    
     # 2. Find all children of intermediates
     parent_is_intermediate <- relations$parent %in% intermediates
     children_by_intermediate <- tapply(relations$child[parent_is_intermediate],
                                        relations$parent[parent_is_intermediate], unique)
-    
     # 3. Remove all edges involving intermediate nodes
     relations <- relations[!(relations$parent %in% intermediates | relations$child %in% intermediates), ]
-    
     # 4. For each intermediate node, create direct parent-child links
     new_edges_list <- lapply(names(parents_by_intermediate), function(node) {
       node_parents <- parents_by_intermediate[[node]]
@@ -103,30 +98,23 @@ load_default_data <- function(database="reactome", species = "Homo sapiens") {
                    stringsAsFactors = FALSE)
       }
     })
-    
     # Filter out any NULL entries
     new_edges_list <- Filter(function(x) !is.null(x), new_edges_list)
-    
     if (length(new_edges_list) > 0) {
       new_edges <- do.call(rbind, new_edges_list)
       # Add and remove duplicates
       relations <- unique(rbind(relations, new_edges))
     }
   }
-  
   # Build the final graph
   g <- graph_from_data_frame(relations, directed = TRUE)
-  
   # Map exact_source IDs to processed names
   exact_source_to_name <- setNames(mapping$processed_name, mapping$exact_source)
-  
   # Assign labels to graph vertices
   V(g)$label <- exact_source_to_name[V(g)$name]
-  
   # Assign genes to vertices
   V(g)$genes <- geneset[V(g)$label]
   V(g)$genes[sapply(V(g)$genes, is.null)] <- list(character(0))
-  
   return(list(
     gene_sets = geneset,
     mapping = mapping,
@@ -134,8 +122,6 @@ load_default_data <- function(database="reactome", species = "Homo sapiens") {
     relations = relations
   ))
 }
-
-
 
 #' Load and preprocess gene sets and pathway relations
 #'
@@ -148,7 +134,9 @@ load_default_data <- function(database="reactome", species = "Homo sapiens") {
 #' @param translation_layer Optional data frame with two columns: 'gene_sets_name' and 'relation_name'.
 #' @return A list containing gene sets, mapping data frame and the pathway graph.
 #' @export
-load_and_preprocess_gene_sets <- function(gene_sets, pathways_relation, translation_layer = NULL) {
+load_and_preprocess_gene_sets <- function(gene_sets,
+                                          pathways_relation,
+                                          translation_layer = NULL) {
   # Ensure that gene_sets is a named list
   if (!is.list(gene_sets) || is.null(names(gene_sets))) {
     stop("gene_sets must be a named list with pathway names as names.")
@@ -176,7 +164,9 @@ load_and_preprocess_gene_sets <- function(gene_sets, pathways_relation, translat
 
   # If translation_layer is provided, map the names
   if (!is.null(translation_layer)) {
-    mapping <- left_join(mapping, translation_layer, by = c("processed_name" = "gene_sets_name"))
+    mapping <- left_join(mapping,
+                         translation_layer,
+                         by = c("processed_name" = "gene_sets_name"))
     # Use 'relation_name' as the name to match in pathways_relation
     mapping$exact_source <- mapping$relation_name
   } else {
@@ -191,16 +181,19 @@ load_and_preprocess_gene_sets <- function(gene_sets, pathways_relation, translat
     mapping <- mapping[!missing_exact_source, ]
   }
 
-  all_exact_sources <- unique(c(pathways_relation$parent, pathways_relation$child))
+  all_exact_sources <- unique(c(pathways_relation$parent,
+                                pathways_relation$child))
   complete_mapping <- data.frame(
     exact_source = all_exact_sources,
     stringsAsFactors = FALSE
   )
-  complete_mapping <- left_join(complete_mapping, mapping, by = "exact_source")
+  complete_mapping <- left_join(complete_mapping,
+                                mapping,
+                                by = "exact_source")
 
   complete_mapping$processed_name <- ifelse(
     is.na(complete_mapping$processed_name),
-    ifelse(grepl("REACTOME",complete_mapping$exact_source[1]),
+    ifelse(grepl("REACTOME", complete_mapping$exact_source[1]),
            str_to_title(gsub("_", " ", gsub("^REACTOME_", "", complete_mapping$exact_source))),
            str_to_title(gsub("_", " ", gsub("^GOBP_", "", complete_mapping$exact_source)))
     ),
@@ -226,7 +219,8 @@ load_and_preprocess_gene_sets <- function(gene_sets, pathways_relation, translat
 
   # Assign genes to vertices
   V(g)$genes <- gene_sets[exact_source_to_name[V(g)$name]]
-  V(g)$genes <- lapply(V(g)$genes, function(x) if (is.null(x)) character(0) else x)
+  V(g)$genes <- lapply(V(g)$genes,
+                       function(x) if (is.null(x)) character(0) else x)
 
   return(list(
     gene_sets = gene_sets,
@@ -254,7 +248,8 @@ add_overlap_to_edges <- function(g, gene_sets) {
   to_genes_list <- V(g)$genes[match(to_nodes, V(g)$name)]
 
   # Compute overlaps and percent overlaps
-  overlaps <- mapply(function(from, to) length(intersect(from, to)), from_genes_list, to_genes_list)
+  overlaps <- mapply(function(from, to) length(intersect(from, to)),
+                     from_genes_list, to_genes_list)
   from_sizes <- lengths(from_genes_list)
   percent_overlaps <- ifelse(from_sizes > 0, (overlaps / from_sizes) * 100, 0)
 
@@ -278,38 +273,38 @@ get_child_pathways <- function(parent_geneset_name, mapping, g) {
   if (length(parent_geneset_name) == 0) {
     stop("No parent_geneset_name provided or it is an empty vector.")
   }
-  
+
   # Get the exact_source ID for the parent pathway
   parent_indices <- match(parent_geneset_name, mapping$processed_name)
-  
+
   # If no match was found
   if (length(parent_indices) == 0 || is.na(parent_indices)) {
     stop("Parent pathway not found in the mapping.")
   }
-  
+
   parent_exact_source <- mapping$exact_source[parent_indices]
-  
+
   # Check if parent_exact_source is missing
   if (length(parent_exact_source) == 0 || is.na(parent_exact_source)) {
     stop("Parent pathway not found in the mapping.")
   }
-  
+
   # Find the parent vertex in the graph
   parent_vertex <- which(V(g)$name == parent_exact_source)
   if (length(parent_vertex) == 0) {
     stop("Parent pathway not found in the graph.")
   }
-  
+
   # Get all descendants (children) of the parent pathway
   descendants <- subcomponent(g, v = parent_vertex, mode = "out")
-  
+
   # Exclude the parent itself
   descendant_exact_sources <- V(g)$name[descendants]
   descendant_exact_sources <- descendant_exact_sources[descendant_exact_sources != parent_exact_source]
-  
+
   # Map exact_source IDs to pathway names
   descendant_geneset_names <- mapping$processed_name[match(descendant_exact_sources, mapping$exact_source)]
   descendant_geneset_names <- descendant_geneset_names[!is.na(descendant_geneset_names)]
-  
+
   return(descendant_geneset_names)
 }
