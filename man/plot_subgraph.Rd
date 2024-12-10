@@ -24,7 +24,8 @@ plot_subgraph(
   legend_position = NULL,
   label_wrap_width = 40,
   edge_arrows = TRUE,
-  repel_labels = FALSE
+  repel_labels = FALSE,
+  max_depth = NULL
 )
 }
 \arguments{
@@ -67,6 +68,8 @@ plot_subgraph(
 \item{edge_arrows}{Logical, whether to display edges as arrows pointing from parents to children. Default is \code{TRUE}.}
 
 \item{repel_labels}{Logical, whether to repel labels to avoid overlaps. Default is \code{FALSE}. If you have a very large graph it is reccommended to try this out.}
+
+\item{max_depth}{Integer, specifying the maximal depth shown at one time on the graph. Defaults to \code{NULL}. If you have a very large graph it is reccommended to try this out.}
 }
 \value{
 A ggplot object representing the subgraph.

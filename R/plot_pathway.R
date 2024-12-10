@@ -4,7 +4,7 @@
 #' Glyphs are generated on-the-fly using the \code{create_glyph_on_the_fly} function, allowing dynamic comparisons
 #' and efficient plotting even with a large number of conditions.
 #'
-#' @importFrom igraph subcomponent induced_subgraph V delete_vertices ends `V<-` E `E<-` distances edge_attr
+#' @importFrom igraph subcomponent induced_subgraph V delete_vertices ends `V<-` E `E<-` distances edge_attr neighbors
 #' @importFrom ggraph ggraph create_layout geom_edge_link geom_node_label geom_node_text scale_edge_color_manual  scale_edge_width geom_node_point circle scale_edge_linetype_manual
 #' @importFrom ggplot2 theme_void ggplotGrob geom_label expansion ylim xlim xlab ylab ggtitle
 #' @importFrom cowplot draw_grob ggdraw plot_grid
@@ -34,6 +34,7 @@
 #' @param label_wrap_width Integer specifying the maximum number of characters in each line of the label. Default is 40.
 #' @param edge_arrows Logical, whether to display edges as arrows pointing from parents to children. Default is \code{TRUE}.
 #' @param repel_labels Logical, whether to repel labels to avoid overlaps. Default is \code{FALSE}. If you have a very large graph it is reccommended to try this out.
+#' @param max_depth Integer, specifying the maximal depth shown at one time on the graph. Defaults to \code{NULL}. If you have a very large graph it is reccommended to try this out.
 #' @return A ggplot object representing the subgraph.
 #' @export
 plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
@@ -42,80 +43,94 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
                           enrichment_limits = NULL, use_node_label = TRUE, reference = NULL,
                           adjust_edge_thickness = FALSE, edge_percentage_labels = FALSE, 
                           glyph_size = c(80, 60), res = 96, legend_position = NULL,
-                          label_wrap_width = 40, edge_arrows = TRUE, repel_labels = FALSE) {
-  # Validate inputs
+                          label_wrap_width = 40, edge_arrows = TRUE, repel_labels = FALSE,
+                          max_depth = NULL) {
   if (!parent_geneset_name %in% mapping$processed_name) {
     stop("Parent pathway not found in the mapping.")
   }
   
   parent_exact_source <- mapping$exact_source[match(parent_geneset_name, mapping$processed_name)]
   
-  # Find the parent vertex in the graph
   parent_vertex <- which(V(g)$name == parent_exact_source)
   if (length(parent_vertex) == 0) {
     stop("Parent pathway not found in the graph.")
   }
   
-  # Get all descendants (children) of the parent pathway
-  descendants <- subcomponent(g, v = parent_vertex, mode = "out")
+  # If max_depth is NULL, get all descendants as before
+  if (is.null(max_depth)) {
+    descendants <- subcomponent(g, v = parent_vertex, mode = "out")
+    sub_g <- induced_subgraph(g, vids = descendants)
+  } else {
+    # Compute distances
+    dist_vec <- distances(g, v = parent_vertex, mode = "out")[1, ]
+    allowed_nodes <- names(dist_vec)[dist_vec <= max_depth]
+    sub_g <- induced_subgraph(g, vids = allowed_nodes)
+    
+    # Identify border nodes
+    border_nodes <- names(dist_vec)[dist_vec == max_depth]
+    for (bn in border_nodes) {
+      bn_idx <- which(V(g)$name == bn)
+      out_neighbors <- neighbors(g, v = bn_idx, mode = "out")
+      out_neighbor_names <- V(g)$name[out_neighbors]
+      truncated <- out_neighbor_names[!(out_neighbor_names %in% allowed_nodes)]
+      if (length(truncated) > 0) {
+        ellipsis_node_name <- paste0("ellipsis_for_", bn)
+        while (ellipsis_node_name %in% V(sub_g)$name) {
+          ellipsis_node_name <- paste0(ellipsis_node_name, "_x")
+        }
+        sub_g <- add_vertices(sub_g, nv = 1, name = ellipsis_node_name)
+        sub_g <- add_edges(sub_g, c(bn, ellipsis_node_name), relation = "truncated")
+        V(sub_g)$label[V(sub_g)$name == ellipsis_node_name] <- "..."
+      }
+    }
+  }
   
-  # Induce subgraph
-  sub_g <- induced_subgraph(g, vids = descendants)
+  normal_nodes <- V(sub_g)$name[!(grepl("^ellipsis_for_", V(sub_g)$name))]
+  V(sub_g)$label[!(grepl("^ellipsis_for_", V(sub_g)$name))] <- mapping$processed_name[match(normal_nodes, mapping$exact_source)]
   
-  # Assign labels to subgraph vertices
-  V(sub_g)$label <- mapping$processed_name[match(V(sub_g)$name, mapping$exact_source)]
-  
-  # Remove vertices with missing labels except the parent
-  missing_labels <- is.na(V(sub_g)$label) & V(sub_g)$name != parent_exact_source
+  missing_labels <- is.na(V(sub_g)$label) & !grepl("^ellipsis_for_", V(sub_g)$name) & V(sub_g)$name != parent_exact_source
   if (any(missing_labels)) {
     sub_g <- delete_vertices(sub_g, V(sub_g)[missing_labels])
   }
   
-  # Handle enrichment scores
   if (!is.null(enrichment_scores) && !is.null(conditions)) {
-    # Adjust enrichment scores if reference is provided
     if (!is.null(reference) && reference %in% conditions) {
       enrichment_scores <- enrichment_scores - enrichment_scores[, reference, drop = TRUE]
       conditions <- setdiff(conditions, reference)
     }
+    node_labels <- V(sub_g)$label
+    valid_labels <- node_labels[node_labels %in% rownames(enrichment_scores)]
+    scores <- enrichment_scores[valid_labels, conditions, drop = FALSE]
     
-    # Subset enrichment scores for the selected pathways and conditions
-    scores <- enrichment_scores[V(sub_g)$label, conditions, drop = FALSE]
-    
-    # Handle missing scores
-    missing_scores <- rowSums(is.na(scores)) == ncol(scores)
+    missing_scores <- rowSums(is.na(enrichment_scores[node_labels, conditions, drop=FALSE])) == length(conditions)
+    missing_scores[is.na(missing_scores)] <- TRUE
     if (hide_nodes_without_enrichment && any(missing_scores)) {
-      sub_g <- induced_subgraph(sub_g, vids = V(sub_g)[!missing_scores])
-      scores <- scores[!missing_scores, , drop = FALSE]
+      keep_nodes <- !missing_scores | grepl("^ellipsis_for_", V(sub_g)$name)
+      sub_g <- induced_subgraph(sub_g, vids = V(sub_g)[keep_nodes])
+      valid_labels <- V(sub_g)$label[V(sub_g)$label %in% valid_labels]
+      if (length(valid_labels) > 0) {
+        scores <- enrichment_scores[valid_labels, conditions, drop = FALSE]
+      } else {
+        scores <- NULL
+      }
     }
-    
-    # Determine enrichment limits
-    if (is.null(enrichment_limits)) {
+    if (is.null(enrichment_limits) && !is.null(scores)) {
       enrichment_limits <- range(scores, na.rm = TRUE)
     }
   }
   
-  # If edge thickness or labels are to be adjusted, add overlap information
   if (adjust_edge_thickness || edge_percentage_labels) {
     sub_g <- add_overlap_to_edges(sub_g, gene_sets)
   }
   
-  # Create the layout data with x and y
   layout_data <- create_layout(sub_g, layout = layout, circular = circular)
-  
-  # Wrap labels to specified width
   layout_data$wrapped_label <- str_wrap(layout_data$label, width = label_wrap_width)
+  single_condition <- !is.null(conditions) && length(conditions) == 1
   
-  # Determine if we have a single condition
-  single_condition <- length(conditions) == 1
-  
-  if (!single_condition && !is.null(enrichment_scores) && !is.null(conditions)) {
-    # Create glyph images on-the-fly
+  if (!single_condition && !is.null(conditions) && !is.null(enrichment_scores)) {
     glyphs <- lapply(V(sub_g)$label, function(pathway) {
-      # Extract enrichment scores for the current pathway
+      if (pathway == "...") return(NA)
       pathway_scores <- enrichment_scores[pathway, conditions, drop = FALSE]
-      
-      # Generate glyph image
       img <- create_glyph_on_the_fly(
         pathway = pathway,
         conditions = conditions,
@@ -124,32 +139,22 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
         glyph_size = glyph_size,
         res = res
       )
-      
-      # Return the image or NA if not available
-      if (!is.null(img)) {
-        return(img[[2]])
-      } else {
-        return(NA)
-      }
+      if (!is.null(img)) img[[2]] else NA
     })
-    
-    # Prepare node images
     node_images <- sapply(glyphs, function(x) x)
-    
-    # Add image column to layout_data
     layout_data$image <- node_images
-  } else if (single_condition && !is.null(enrichment_scores)) {
-    # For single condition, prepare enrichment scores for coloring
+  } else if (single_condition && !is.null(conditions) && !is.null(enrichment_scores)) {
     single_condition_name <- conditions[1]
-    layout_data$enrichment_score <- enrichment_scores[V(sub_g)$label, single_condition_name]
+    layout_data$enrichment_score <- enrichment_scores[layout_data$label, single_condition_name]
   }
   
   relation_values = c(
-    "is_a" = 1,
-    "part_of" = 2,
-    "regulates" = 3,
-    "positively_regulates" = 4,
-    "negatively_regulates" = 5
+    "is_a" = "solid",
+    "part_of" = "dashed",
+    "regulates" = "dotted",
+    "positively_regulates" = "dotdash",
+    "negatively_regulates" = "longdash",
+    "truncated" = "solid"
   )
   
   relation_colors <- c(
@@ -157,13 +162,12 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
     "part_of" = "darkcyan",
     "regulates" = "orange",
     "positively_regulates" = "steelblue",
-    "negatively_regulates" = "salmon"
+    "negatively_regulates" = "salmon",
+    "truncated" = "grey"
   )
   
-  # Edges with NA or unknown relations get solid
   E(sub_g)$relation <- factor(E(sub_g)$relation, levels = names(relation_values))
-
-  # Create the ggraph plot with layout_data
+  
   p <- ggraph(layout_data) +
     geom_edge_link(
       aes(
@@ -177,46 +181,74 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
       end_cap = if (edge_arrows) circle(0.015, 'npc') else NULL,
       start_cap = if (edge_arrows) circle(0.015, 'npc') else NULL,
       angle_calc = "along",
-      check_overlap = T,
+      check_overlap = TRUE,
       label_dodge = unit(0.015,"npc"),
       label_push = unit(0.015,"npc")
     ) +
     scale_edge_width(range = c(0.5, 2)) +
     theme_void() +
     scale_edge_color_manual(values = relation_colors, na.value = "black") +
-    scale_edge_linetype_manual(values = relation_values, na.value = "solid") 
+    scale_edge_linetype_manual(values = relation_values, na.value = "solid")
   
-  if (!single_condition && !is.null(enrichment_scores) && !is.null(conditions)) {
-    # Adjust glyph size based on number of nodes
+  # Drawing nodes:
+  # Multiple conditions with images
+  if (!single_condition && !is.null(conditions) && !is.null(enrichment_scores)) {
     num_nodes <- nrow(layout_data)
-    min_glyph_size <- 0.02  # Minimum glyph size
-    max_glyph_size <- 0.1   # Maximum glyph size
+    min_glyph_size <- 0.02
+    max_glyph_size <- 0.1
     glyph_size_scale <- min(max_glyph_size, max(min_glyph_size, 0.5 / sqrt(num_nodes)))
     
-    # Add glyphs as node images
-    if (any(!is.na(layout_data$image))) {
-      p <- p + geom_image(aes(x = x, y = y, image = image),
-                                   size = glyph_size_scale, na.rm = TRUE)
+    if (any(!is.na(layout_data$image) & layout_data$label != "...")) {
+      p <- p + geom_image(data = subset(layout_data, !is.na(image) & label != "..."),
+                          aes(x = x, y = y, image = image),
+                          size = glyph_size_scale, na.rm = TRUE)
     }
-    
-    if (any(is.na(layout_data$image))) {
-      p <- p + geom_node_point(data = subset(layout_data, is.na(layout_data$image)),
+    if (any(is.na(layout_data$image) & layout_data$label != "...")) {
+      p <- p + geom_node_point(data = subset(layout_data, is.na(image) & label != "..."),
                                aes(x = x, y = y),
                                color = "purple", size = glyph_size_scale * 25)
     }
-  } else if (single_condition && !is.null(enrichment_scores)) {
-    # Plot nodes as colored dots based on enrichment score
-    p <- p + geom_node_point(aes(color = enrichment_score), size = 5)
     
-    # Define a continuous color scale for enrichment scores
-    p <- p + scale_colour_continuous_diverging(palette = "Berlin", limits = enrichment_limits)
+    # Ellipsis nodes: just text
+    if (any(layout_data$label == "...")) {
+      p <- p + geom_node_text(data = subset(layout_data, label == "..."),
+                              aes(x = x, y = y, label = label),
+                              size = 10, color="black", fontface="bold")
+    }
+    
+  } else if (single_condition && !is.null(conditions) && !is.null(enrichment_scores)) {
+    # Exclude ellipses from points
+    p <- p + geom_node_point(data = subset(layout_data, label != "..."),
+                             aes(color = enrichment_score), size = 5) +
+      scale_colour_continuous_diverging(palette = "Berlin", limits = enrichment_limits)
+    
+    # Ellipsis nodes
+    if (any(layout_data$label == "...")) {
+      p <- p + geom_node_text(data = subset(layout_data, label == "..."),
+                              aes(x = x, y = y, label = label),
+                              size = 10, color="black", fontface="bold")
+    }
+  } else {
+    # No enrichment scenario
+    # Exclude ellipses from points
+    p <- p + geom_node_point(data = subset(layout_data, label != "..."),
+                             aes(x = x, y = y),
+                             size = 3, color = "steelblue")
+    
+    # Ellipsis nodes
+    if (any(layout_data$label == "...")) {
+      p <- p + geom_node_text(data = subset(layout_data, label == "..."),
+                              aes(x = x, y = y, label = label),
+                              size = 10, color="black", fontface="bold")
+    }
   }
   
-  if (use_node_label) {
+  # Labels for non-ellipsis nodes if requested
+  if (use_node_label && any(layout_data$label != "...")) {
+    non_ellipsis_data <- subset(layout_data, label != "...")
     if (repel_labels) {
-      # Use geom_label_repel for images
       p <- p + geom_label_repel(
-        data = layout_data,
+        data = non_ellipsis_data,
         aes(x = x, y = y, label = wrapped_label),
         size = 3,
         box.padding = unit(0.5, "lines"),
@@ -225,11 +257,11 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
       )
     } else {
       if ("image" %in% names(layout_data)) {
-        # Calculate nudge_y based on glyph size and plot dimensions
-        y_range <- diff(range(layout_data$y))
-        nudge_y <- -glyph_size_scale * y_range * 0.35   # Adjust multiplier as needed
+        y_range <- diff(range(non_ellipsis_data$y))
+        glyph_size_scale <- ifelse(exists("glyph_size_scale"), glyph_size_scale, 0.05)
+        nudge_y <- -glyph_size_scale * y_range * 0.35
         p <- p + geom_label(
-          data = layout_data,
+          data = non_ellipsis_data,
           aes(x = x, y = y, label = wrapped_label),
           size = 3,
           vjust = 1,
@@ -238,9 +270,9 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
           label.size = 0.2
         )
       } else {
-        nudge_y <- -1# Adjust multiplier as needed
+        nudge_y <- -1
         p <- p + geom_label(
-          data = layout_data,
+          data = non_ellipsis_data,
           aes(x = x, y = y, label = wrapped_label),
           size = 3,
           vjust = 1,
@@ -250,10 +282,8 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
         )
       }
     }
-  } else {
-    p <- p + geom_node_text(aes(label = wrapped_label),
-                             size = 3, repel = TRUE)
   }
+  
   
   # Add legend if needed
   # Extract node positions
