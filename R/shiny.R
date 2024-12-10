@@ -542,14 +542,13 @@ run_pathway_shiny_app <- function(
           relation_legend <- generate_relation_legend(
             relations_present = relations_present,
             relation_colors = relation_colors,
-            relation_linetypes = relation_linetypes
+            relation_values = relation_linetypes
           )
           # Combine the two legends vertically
           combined_plot <- plot_grid(legend_plot, relation_legend, ncol = 1, rel_heights = c(3,1))
           combined_plot
         } else {
           legend_plot
-          
         }
       }
     }, height = 250)  # Adjust height as needed

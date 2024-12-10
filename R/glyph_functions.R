@@ -148,25 +148,26 @@ generate_legend_plot <- function(conditions, enrichment_limits, reference = NULL
 generate_relation_legend <- function(relations_present,
                                      relation_colors = c(
                                        "is_a" = "black",
-                                       "part_of" = "blue",
-                                       "regulates" = "green",
-                                       "positively_regulates" = "orange",
-                                       "negatively_regulates" = "red"
+                                       "part_of" = "darkcyan",
+                                       "regulates" = "orange",
+                                       "positively_regulates" = "steelblue",
+                                       "negatively_regulates" = "salmon"
                                      ),
-                                     relation_linetypes = c(
+                                     relation_values = c(
                                        "is_a" = "solid",
                                        "part_of" = "dashed",
                                        "regulates" = "dotted",
                                        "positively_regulates" = "dotdash",
                                        "negatively_regulates" = "longdash"
-                                     )) {
+                                     ),
+                                     textsize = 5) {
   # Create a data frame for plotting the relations
   df <- data.frame(
     relation = relations_present,
     x = 1,
     y = seq_along(relations_present),
     color = relation_colors[relations_present],
-    linetype = relation_linetypes[relations_present],
+    linetype = relation_values[relations_present],
     stringsAsFactors = FALSE
   )
   
@@ -175,9 +176,9 @@ generate_relation_legend <- function(relations_present,
   
   rel_plot <- ggplot(df, aes(x = x, y = y)) +
     geom_segment(aes(x = x - 0.4, xend = x + 0.4, y = y, yend = y,
-                     color = I(color), linetype = linetype), size = 1) +
+                     color = I(color), linetype = I(linetype)), size = 1) +
     geom_text(aes(x = x, y = y - 0.3, label = relation),
-              color = "black", size = 5, hjust = 0.5,
+              color = "black", size = textsize, hjust = 0.5,
               fontface = "bold") +
     theme_minimal(base_size = 10) +
     theme(
@@ -190,7 +191,7 @@ generate_relation_legend <- function(relations_present,
     ) +
     coord_cartesian(clip = "off")
   
-  return(rel_plot)
+  (rel_plot)
 }
 
 

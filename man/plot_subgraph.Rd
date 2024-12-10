@@ -19,7 +19,6 @@ plot_subgraph(
   reference = NULL,
   adjust_edge_thickness = FALSE,
   edge_percentage_labels = FALSE,
-  color_by_depth = FALSE,
   glyph_size = c(80, 60),
   res = 96,
   legend_position = NULL,
@@ -56,8 +55,6 @@ plot_subgraph(
 \item{adjust_edge_thickness}{Logical, whether to adjust edge thickness based on overlap. Default is \code{FALSE}.}
 
 \item{edge_percentage_labels}{Logical, whether to add edge percentage labels. Default is \code{FALSE}.}
-
-\item{color_by_depth}{Logical, whether to color edges by depth from the root node. Default is \code{FALSE}.}
 
 \item{glyph_size}{Numeric vector specifying the width and height of the glyphs in pixels. Default is \code{c(80, 60)}.}
 

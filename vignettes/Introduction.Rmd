@@ -136,30 +136,6 @@ plot_subgraph(
 )
 ```
 
-## Coloring Edges by Depth from the Root Node
-
-Further customize the plot by coloring edges based on their depth from the root node, providing additional insight into the pathway hierarchy.
-
-```{r}
-# Plotting multiple conditions relative to Condition 1 with edge thickness, labels, and color by depth
-plot_subgraph(
-  parent_geneset_name = parent_name,
-  enrichment_scores = enrichment_scores,
-  conditions = conditions,
-  mapping = mapping,
-  g = g,
-  gene_sets = gene_sets,
-  layout = "kk",
-  hide_nodes_without_enrichment = TRUE,
-  enrichment_limits = NULL,
-  use_node_label = TRUE,
-  reference = "Condition.1",
-  adjust_edge_thickness = TRUE,
-  edge_percentage_labels = TRUE,
-  color_by_depth = TRUE
-)
-```
-
 ## Plotting a Subgraph with a Single Condition
 
 Focus on a single condition to explore specific pathway enrichments without the complexity of multiple comparisons.

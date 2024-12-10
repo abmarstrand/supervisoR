@@ -4,10 +4,10 @@
 #' Glyphs are generated on-the-fly using the \code{create_glyph_on_the_fly} function, allowing dynamic comparisons
 #' and efficient plotting even with a large number of conditions.
 #'
-#' @importFrom igraph subcomponent induced_subgraph V delete_vertices ends `V<-` E `E<-` distances
-#' @importFrom ggraph ggraph create_layout geom_edge_link geom_node_label geom_node_text scale_edge_colour_continuous scale_edge_colour_viridis scale_edge_width geom_node_point circle scale_edge_linetype_manual
+#' @importFrom igraph subcomponent induced_subgraph V delete_vertices ends `V<-` E `E<-` distances edge_attr
+#' @importFrom ggraph ggraph create_layout geom_edge_link geom_node_label geom_node_text scale_edge_color_manual  scale_edge_width geom_node_point circle scale_edge_linetype_manual
 #' @importFrom ggplot2 theme_void ggplotGrob geom_label expansion ylim xlim xlab ylab ggtitle
-#' @importFrom cowplot draw_grob ggdraw 
+#' @importFrom cowplot draw_grob ggdraw plot_grid
 #' @importFrom ggimage geom_image
 #' @importFrom ggrepel geom_label_repel
 #' @importFrom magrittr %>%
@@ -28,7 +28,6 @@
 #' @param reference Optional character string specifying the reference condition.
 #' @param adjust_edge_thickness Logical, whether to adjust edge thickness based on overlap. Default is \code{FALSE}.
 #' @param edge_percentage_labels Logical, whether to add edge percentage labels. Default is \code{FALSE}.
-#' @param color_by_depth Logical, whether to color edges by depth from the root node. Default is \code{FALSE}.
 #' @param glyph_size Numeric vector specifying the width and height of the glyphs in pixels. Default is \code{c(80, 60)}.
 #' @param res Numeric value specifying the resolution of the glyph images in dpi. Default is 96.
 #' @param legend_position Optional character string ("topright", "topleft", "bottomleft" or "bottomright") determining final legend position.
@@ -41,7 +40,7 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
                           mapping, g, gene_sets = NULL,
                           layout = "kk", circular = FALSE, hide_nodes_without_enrichment = TRUE,
                           enrichment_limits = NULL, use_node_label = TRUE, reference = NULL,
-                          adjust_edge_thickness = FALSE, edge_percentage_labels = FALSE, color_by_depth = FALSE,
+                          adjust_edge_thickness = FALSE, edge_percentage_labels = FALSE, 
                           glyph_size = c(80, 60), res = 96, legend_position = NULL,
                           label_wrap_width = 40, edge_arrows = TRUE, repel_labels = FALSE) {
   # Validate inputs
@@ -101,19 +100,6 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
     sub_g <- add_overlap_to_edges(sub_g, gene_sets)
   }
   
-  # If color_by_depth is TRUE, compute depth from the root for each edge
-  if (color_by_depth) {
-    E(sub_g)$distances <- sapply(ends(sub_g, E(sub_g))[, 2], function(edge_pw) {
-      distances(g, parent_exact_source, edge_pw)[[1]]
-    })
-    edge_colors <- scale_edge_colour_viridis(option = "G", aesthetics = "edge_colour",
-                                             end = 0.75, guide = "none")
-  } else {
-    E(sub_g)$distances <- 1
-    edge_colors <- scale_edge_colour_continuous(low = "gray50", high = "gray50",
-                                                aesthetics = "edge_colour", guide = "none")
-  }
-  
   # Create the layout data with x and y
   layout_data <- create_layout(sub_g, layout = layout, circular = circular)
   
@@ -158,30 +144,38 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
     layout_data$enrichment_score <- enrichment_scores[V(sub_g)$label, single_condition_name]
   }
   
-  relation_values <- c(
-    "is_a" = "solid",
-    "part_of" = "dashed",
-    "regulates" = "dotted",
-    "positively_regulates" = "dotdash",
-    "negatively_regulates" = "longdash"
+  relation_values = c(
+    "is_a" = 1,
+    "part_of" = 2,
+    "regulates" = 3,
+    "positively_regulates" = 4,
+    "negatively_regulates" = 5
+  )
+  
+  relation_colors <- c(
+    "is_a" = "black",
+    "part_of" = "darkcyan",
+    "regulates" = "orange",
+    "positively_regulates" = "steelblue",
+    "negatively_regulates" = "salmon"
   )
   
   # Edges with NA or unknown relations get solid
   E(sub_g)$relation <- factor(E(sub_g)$relation, levels = names(relation_values))
-  
+
   # Create the ggraph plot with layout_data
   p <- ggraph(layout_data) +
     geom_edge_link(
       aes(
         width = if (adjust_edge_thickness) percent_overlap else 1,
-        color = if (color_by_depth) distances else 1,
         label = if (edge_percentage_labels) paste0(round(percent_overlap, 1), "%") else NA,
+        color = relation,
         linetype = relation
       ),
       show.legend = FALSE,
-      arrow = if (edge_arrows) grid::arrow(length = unit(0.005, "npc"), type = "open") else NULL,
-      end_cap = if (edge_arrows) circle(0.01, 'npc') else NULL,
-      start_cap = if (edge_arrows) circle(0.01, 'npc') else NULL,
+      arrow = if (edge_arrows) grid::arrow(length = unit(0.0075, "npc"), type = "open") else NULL,
+      end_cap = if (edge_arrows) circle(0.015, 'npc') else NULL,
+      start_cap = if (edge_arrows) circle(0.015, 'npc') else NULL,
       angle_calc = "along",
       check_overlap = T,
       label_dodge = unit(0.015,"npc"),
@@ -189,7 +183,7 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
     ) +
     scale_edge_width(range = c(0.5, 2)) +
     theme_void() +
-    edge_colors +
+    scale_edge_color_manual(values = relation_colors, na.value = "black") +
     scale_edge_linetype_manual(values = relation_values, na.value = "solid") 
   
   if (!single_condition && !is.null(enrichment_scores) && !is.null(conditions)) {
@@ -296,7 +290,29 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
       enrichment_limits = enrichment_limits,
       reference = reference
     )
-    legend_grob <- ggplotGrob(legend_plot)
+    
+    
+    if ("relation" %in% names(edge_attr(sub_g))) {
+      relations <- unique(E(sub_g)$relation)
+    } else {
+      relations <- character(0)
+    }
+    relations_present <- relations[!is.na(relations)]
+    relations_present <- relations_present[relations_present %in% names(relation_colors)]
+
+    if (length(relations_present) > 0) {
+      relation_legend <- generate_relation_legend(
+        relations_present = relations_present,
+        relation_colors = relation_colors,
+        relation_values = relation_values,
+        textsize = 3
+      )
+      # Combine the two legends vertically
+      combined_plot <- plot_grid(legend_plot, relation_legend, ncol = 1, rel_heights = c(3,1))
+      legend_grob <- ggplotGrob(combined_plot)
+    } else {
+      legend_grob <- ggplotGrob(legend_plot)
+    }
     
     legend_coords <- switch(best_corner$corner,
                             "topleft" = list(x = 0.05, y = 0.75),

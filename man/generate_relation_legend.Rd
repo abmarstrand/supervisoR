@@ -6,10 +6,11 @@
 \usage{
 generate_relation_legend(
   relations_present,
-  relation_colors = c(is_a = "black", part_of = "blue", regulates = "green",
-    positively_regulates = "orange", negatively_regulates = "red"),
-  relation_linetypes = c(is_a = "solid", part_of = "dashed", regulates = "dotted",
-    positively_regulates = "dotdash", negatively_regulates = "longdash")
+  relation_colors = c(is_a = "black", part_of = "darkcyan", regulates = "orange",
+    positively_regulates = "steelblue", negatively_regulates = "salmon"),
+  relation_values = c(is_a = "solid", part_of = "dashed", regulates = "dotted",
+    positively_regulates = "dotdash", negatively_regulates = "longdash"),
+  textsize = 5
 )
 }
 \arguments{
