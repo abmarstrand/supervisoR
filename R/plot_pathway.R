@@ -37,7 +37,7 @@
 #' @param max_depth Integer, specifying the maximal depth shown at one time on the graph. Defaults to \code{NULL}. If you have a very large graph it is reccommended to try this out.
 #' @return A ggplot object representing the subgraph.
 #' @export
-plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
+plot_subgraph <- function(parent_geneset_name, enrichment_scores = NULL, conditions = NULL,
                           mapping, g, gene_sets = NULL,
                           layout = "kk", circular = FALSE,
                           hide_nodes_without_enrichment = TRUE,
@@ -231,7 +231,7 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
     # Exclude ellipses from points
     p <- p + geom_node_point(data = subset(layout_data, label != "..."),
                              aes(x = x, y = y),
-                             size = 3, color = "steelblue")
+                             size = 5, color = "steelblue")
     # Ellipsis nodes
     if (any(layout_data$label == "...")) {
       p <- p + geom_node_text(data = subset(layout_data, label == "..."),
@@ -266,7 +266,7 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
           label.size = 0.2
         )
       } else {
-        nudge_y <- -1
+        nudge_y <- -0.1
         p <- p + geom_label(
           data = non_ellipsis_data,
           aes(x = x, y = y, label = wrapped_label),
@@ -307,7 +307,7 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores, conditions,
   }
 
   # Create the appropriate legend based on the condition
-  if (!single_condition) {
+  if (!single_condition && !is.null(enrichment_scores)) {
     legend_plot <- generate_legend_plot(
       conditions = conditions,
       enrichment_limits = enrichment_limits,

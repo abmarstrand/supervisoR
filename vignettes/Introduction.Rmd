@@ -49,6 +49,8 @@ trans <- data.frame(
 )
 
 # Preprocess gene sets using the mapping and relations (EXAMPLE, NOT NECESSARY WHEN USING DEFAULT DATA)
+# In order to process the data we require two things; a list of genesets and a dataframe of pathway relations. The geneset list must contain named lists of genes, with the names corresponding to the geneset. The pathway relations dataframe must contain a column named "parent" and "child", indicating which nodes in the hierarchy should be linked and how. An optional third relation column describes the relation - e.g. for GO pathways you can have a pathway regulate another.
+# A translation_layer dataframe is required if the pathway names in you relation dataframe does not match those in the geneset dataframe. It must contain two columns, gene_sets_name and relation_name.
 preprocessed_data <- load_and_preprocess_gene_sets(
   gene_sets = gene_sets,
   pathways_relation = relations,
@@ -81,8 +83,9 @@ conditions <- colnames(enrichment_scores)
 # Define the parent pathway name. Select an example below depending on whether it is a reactome or GO graph.
 parent_name <- "Signaling By Tgfb Family Members" # REACTOME
 # parent_name <- "Polysaccharide Metabolic Process" #GO
+
 # Plotting multiple conditions
-plot_subgraph(
+p1 <- plot_subgraph(
   parent_geneset_name = parent_name,
   enrichment_scores = enrichment_scores,
   conditions = conditions,
@@ -94,6 +97,8 @@ plot_subgraph(
   enrichment_limits = NULL,
   use_node_label = TRUE
 )
+
+print(p1)
 ```
 
 ## Plotting multiple conditions relative to Condition 1
@@ -102,7 +107,7 @@ You can visualize enrichment scores relative to a specific reference condition b
 
 ```{r}
 # Plotting multiple conditions relative to Condition 1
-plot_subgraph(
+p2 <- plot_subgraph(
   parent_geneset_name = parent_name,
   enrichment_scores = enrichment_scores,
   conditions = conditions,
@@ -115,6 +120,8 @@ plot_subgraph(
   use_node_label = TRUE,
   reference = "Condition.1"
 )
+
+print(p2)
 ```
 
 ## Adjusting Edge Thickness and Adding Percentage Labels
@@ -123,7 +130,7 @@ Enhance the visualization by adjusting edge thickness based on gene overlap and 
 
 ```{r}
 # Plotting multiple conditions relative to Condition 1 with edge thickness and labels
-plot_subgraph(
+p3 <- plot_subgraph(
   parent_geneset_name = parent_name,
   enrichment_scores = enrichment_scores,
   conditions = conditions,
@@ -138,6 +145,8 @@ plot_subgraph(
   adjust_edge_thickness = TRUE,
   edge_percentage_labels = TRUE
 )
+
+print(p3)
 ```
 
 ## Plotting a Subgraph with a Single Condition
@@ -146,7 +155,7 @@ Focus on a single condition to explore specific pathway enrichments without the 
 
 ```{r}
 # Plotting a subgraph for a single condition
-plot_subgraph(
+p4 <- plot_subgraph(
   parent_geneset_name = "Metabolism Of Lipids",
   enrichment_scores = enrichment_scores,
   conditions = "Condition.3",
@@ -159,6 +168,8 @@ plot_subgraph(
   use_node_label = TRUE,
   repel = TRUE
 )
+
+print(p4)
 ```
 ## Plotting a Subgraph with a Single Condition, up to three links from the root
 
@@ -166,7 +177,7 @@ Focus on a single condition to explore specific pathway enrichments without the 
 
 ```{r}
 # Plotting a subgraph for a single condition
-plot_subgraph(
+p5 <- plot_subgraph(
   parent_geneset_name = "Metabolism Of Lipids",
   enrichment_scores = enrichment_scores,
   conditions = "Condition.3",
@@ -180,6 +191,8 @@ plot_subgraph(
   repel = TRUE,
   max_depth = 2
 )
+
+print(p5)
 ```
 
 
