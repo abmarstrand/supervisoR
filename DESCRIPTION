@@ -12,8 +12,6 @@ Description: Package enabling visualization of hierarchical pathways across many
   Works for an arbitrary number of groups (tested with n=20) and with arbitrary input data, though we recommend using directional enrichment scores.
   Contains both a shiny app for exploration and commands for the generation of hierarchical plots.
 License: MIT + file LICENSE
-Encoding: UTF-8
-LazyData: false
 Imports:
     msigdbr,
     igraph,
@@ -36,7 +34,6 @@ Imports:
     shiny,
     visNetwork,
     shinyWidgets
-RoxygenNote: 7.3.2
 Suggests: 
     knitr,
     rmarkdown,
@@ -48,3 +45,7 @@ Depends:
     R (>= 3.5)
 URL: https://github.com/abmarstrand/supervisoR
 BugReports: https://github.com/abmarstrand/supervisoR/issues
+Encoding: UTF-8
+LazyData: false
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
