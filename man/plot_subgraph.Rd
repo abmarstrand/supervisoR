@@ -6,10 +6,12 @@
 \usage{
 plot_subgraph(
   parent_geneset_name,
-  enrichment_scores,
-  conditions,
-  mapping,
-  g,
+  enrichment_scores = NULL,
+  conditions = NULL,
+  species = "Homo sapiens",
+  database = "reactome",
+  mapping = NULL,
+  g = NULL,
   gene_sets = NULL,
   layout = "kk",
   circular = FALSE,
@@ -35,11 +37,15 @@ plot_subgraph(
 
 \item{conditions}{Character vector of conditions to include in the glyphs.}
 
-\item{mapping}{Data frame containing mapping information.}
+\item{species}{String describing which species to use. Currently supports "Homo sapiens" or "Mus musculus". Ignored if mapping, g and gene_sets are provided.}
 
-\item{g}{The pathway graph (igraph object).}
+\item{database}{String describing which database to use. Currently supports "reactome" and "GO, which are the MsigDB versions of the full REACTOME database and the GOBP terms. Ignored if mapping, g and gene_sets are provided.}
 
-\item{gene_sets}{List of gene sets used for edge calculations.}
+\item{mapping}{Optional data frame containing mapping information used for translating between pathway IDs and names. Must have two columns called processed_name and exact_source containing the names and IDs respectively. See load_and_preprocess_gene_sets() for details on how to generate this.}
+
+\item{g}{Optional igraph object containing the network graph. Can be generated from a dataframe containing inter-pathway relations. See load_and_preprocess_gene_sets() for details on how to generate this.}
+
+\item{gene_sets}{Optional list of named lists containing the genes found in the used pathways. Used for pathway overlap adjustments, see adjust_edge_thickness and edge_percentage_labels.}
 
 \item{layout}{The layout algorithm to use (e.g., "kk", "fr"). Default is "kk".}
 
@@ -77,5 +83,8 @@ A ggplot object representing the subgraph.
 \description{
 Plots a subgraph with nodes represented by glyphs that visualize enrichment scores across specified conditions.
 Glyphs are generated on-the-fly using the \code{create_glyph_on_the_fly} function, allowing dynamic comparisons
-and efficient plotting even with a large number of conditions.
+and efficient plotting even with a very large number of conditions.
+}
+\details{
+If no custom
 }

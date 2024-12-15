@@ -7,9 +7,11 @@
 run_pathway_shiny_app(
   enrichment_scores,
   conditions,
-  mapping,
-  g,
-  gene_sets,
+  species = "Homo sapiens",
+  database = "reactome",
+  mapping = NULL,
+  g = NULL,
+  gene_sets = NULL,
   enrichment_limits = NULL,
   glyph_size = c(80, 60),
   res = 96,
@@ -25,15 +27,15 @@ containing enrichment scores. Pathways should correspond to the labels in the pa
 \item{conditions}{A character vector specifying the conditions to visualize. These should match
 the column names in enrichment_scores.}
 
-\item{mapping}{A data.frame containing mapping information between pathway names and their
-IDs. This is typically obtained from the load_default_data or
-load_and_preprocess_gene_sets functions.}
+\item{species}{String describing which species to use. Currently supports "Homo sapiens" or "Mus musculus". Ignored if mapping, g and gene_sets are provided.}
 
-\item{g}{An igraph object representing the pathway graph. Nodes should have a
-label attribute corresponding to pathway names.}
+\item{database}{String describing which database to use. Currently supports "reactome" and "GO, which are the MsigDB versions of the full REACTOME database and the GOBP terms. Ignored if mapping, g and gene_sets are provided.}
 
-\item{gene_sets}{A named list where each element corresponds to a pathway and contains
-the associated genes. Names should match the pathway labels in the graph.}
+\item{mapping}{Optional data frame containing mapping information used for translating between pathway IDs and names. Must have two columns called processed_name and exact_source containing the names and IDs respectively. See load_and_preprocess_gene_sets() for details on how to generate this.}
+
+\item{g}{Optional igraph object containing the network graph. Can be generated from a dataframe containing inter-pathway relations. See load_and_preprocess_gene_sets() for details on how to generate this.}
+
+\item{gene_sets}{Optional list of named lists containing the genes found in the used pathways. Used for pathway overlap adjustments, see adjust_edge_thickness and edge_percentage_labels.}
 
 \item{enrichment_limits}{Optional numeric vector of length two specifying the minimum and
 maximum enrichment scores for visualization. If NULL, limits are computed from

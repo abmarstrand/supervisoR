@@ -19,13 +19,11 @@
 #'   containing enrichment scores. Pathways should correspond to the labels in the pathway graph.
 #' @param conditions A character vector specifying the conditions to visualize. These should match
 #'   the column names in enrichment_scores.
-#' @param mapping A data.frame containing mapping information between pathway names and their
-#'   IDs. This is typically obtained from the load_default_data or
-#'   load_and_preprocess_gene_sets functions.
-#' @param g An igraph object representing the pathway graph. Nodes should have a
-#'   label attribute corresponding to pathway names.
-#' @param gene_sets A named list where each element corresponds to a pathway and contains
-#'   the associated genes. Names should match the pathway labels in the graph.
+#' @param species String describing which species to use. Currently supports "Homo sapiens" or "Mus musculus". Ignored if mapping, g and gene_sets are provided.
+#' @param database String describing which database to use. Currently supports "reactome" and "GO, which are the MsigDB versions of the full REACTOME database and the GOBP terms. Ignored if mapping, g and gene_sets are provided.
+#' @param mapping Optional data frame containing mapping information used for translating between pathway IDs and names. Must have two columns called processed_name and exact_source containing the names and IDs respectively. See load_and_preprocess_gene_sets() for details on how to generate this.
+#' @param g Optional igraph object containing the network graph. Can be generated from a dataframe containing inter-pathway relations. See load_and_preprocess_gene_sets() for details on how to generate this.
+#' @param gene_sets Optional list of named lists containing the genes found in the used pathways. Used for pathway overlap adjustments, see adjust_edge_thickness and edge_percentage_labels. 
 #' @param enrichment_limits Optional numeric vector of length two specifying the minimum and
 #'   maximum enrichment scores for visualization. If NULL, limits are computed from
 #'   enrichment_scores.
@@ -43,9 +41,11 @@
 run_pathway_shiny_app <- function(
   enrichment_scores,         # Data frame: pathways x conditions
   conditions,                # Character vector: conditions to visualize
-  mapping,                   # Data frame: pathway to exact_source mapping
-  g,                         # igraph object: pathway graph
-  gene_sets,                 # Named list: pathway -> genes
+  species ="Homo sapiens",
+  database = "reactome",
+  mapping = NULL,                   # Data frame: pathway to exact_source mapping
+  g = NULL,                         # igraph object: pathway graph
+  gene_sets = NULL,                 # Named list: pathway -> genes
   enrichment_limits = NULL,  # Numeric vector: c(min, max) for enrichment
   glyph_size = c(80, 60),    # Numeric vector: width and height of glyphs in pixels
   res = 96,                  # Numeric: resolution of glyph images in DPI
@@ -59,6 +59,37 @@ run_pathway_shiny_app <- function(
     options = NULL
   ) # List: Options for plot layout
 ) {
+  
+  # If either mapping, g or gene_sets is not provided use the default data provided with the package
+  if(is.null(mapping) | is.null(g) | is.null(gene_sets)) {
+    data <- load_default_data(database = database, species = species)
+    # Extract components from the loaded data
+    gs <- data$gene_sets
+    rel <- data$relations
+    
+    # Create translation layer mapping 
+    trans <- data.frame(
+      gene_sets_name = data$mapping$processed_name,
+      relation_name = data$mapping$exact_source,
+      stringsAsFactors = FALSE
+    )
+    
+    data <- load_and_preprocess_gene_sets(
+      gene_sets = gs,
+      pathways_relation = rel,
+      translation_layer = trans
+    )
+    
+    if (is.null(mapping)) {
+      mapping <- data$mapping
+    }
+    if (is.null(g)) {
+      g <- data$pathway_graph
+    }
+    if (is.null(gene_sets)) {
+      gene_sets <- data$gene_sets
+    }
+  }
   # Prepare list of all pathways for search
   all_pathways <- unique(mapping$processed_name)
   names(all_pathways) <- all_pathways

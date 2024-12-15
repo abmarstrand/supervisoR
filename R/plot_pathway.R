@@ -2,7 +2,9 @@
 #'
 #' Plots a subgraph with nodes represented by glyphs that visualize enrichment scores across specified conditions.
 #' Glyphs are generated on-the-fly using the \code{create_glyph_on_the_fly} function, allowing dynamic comparisons
-#' and efficient plotting even with a large number of conditions.
+#' and efficient plotting even with a very large number of conditions.
+#' 
+#' If no custom 
 #'
 #' @importFrom igraph subcomponent induced_subgraph V delete_vertices ends `V<-` E `E<-` distances edge_attr neighbors
 #' @importFrom ggraph ggraph create_layout geom_edge_link geom_node_label geom_node_text scale_edge_color_manual  scale_edge_width geom_node_point circle scale_edge_linetype_manual
@@ -17,9 +19,11 @@
 #' @param parent_geneset_name Name of the parent geneset. This is used to extract the subgraph of interest.
 #' @param enrichment_scores Data frame of enrichment scores (rows are pathways, columns are conditions).
 #' @param conditions Character vector of conditions to include in the glyphs.
-#' @param mapping Data frame containing mapping information.
-#' @param g The pathway graph (igraph object).
-#' @param gene_sets List of gene sets used for edge calculations.
+#' @param species String describing which species to use. Currently supports "Homo sapiens" or "Mus musculus". Ignored if mapping, g and gene_sets are provided.
+#' @param database String describing which database to use. Currently supports "reactome" and "GO, which are the MsigDB versions of the full REACTOME database and the GOBP terms. Ignored if mapping, g and gene_sets are provided.
+#' @param mapping Optional data frame containing mapping information used for translating between pathway IDs and names. Must have two columns called processed_name and exact_source containing the names and IDs respectively. See load_and_preprocess_gene_sets() for details on how to generate this.
+#' @param g Optional igraph object containing the network graph. Can be generated from a dataframe containing inter-pathway relations. See load_and_preprocess_gene_sets() for details on how to generate this.
+#' @param gene_sets Optional list of named lists containing the genes found in the used pathways. Used for pathway overlap adjustments, see adjust_edge_thickness and edge_percentage_labels. 
 #' @param layout The layout algorithm to use (e.g., "kk", "fr"). Default is "kk".
 #' @param circular Logical, whether to use a circular layout. Default is \code{FALSE}.
 #' @param hide_nodes_without_enrichment Logical, whether to hide nodes without enrichment scores. Default is \code{TRUE}.
@@ -38,7 +42,8 @@
 #' @return A ggplot object representing the subgraph.
 #' @export
 plot_subgraph <- function(parent_geneset_name, enrichment_scores = NULL, conditions = NULL,
-                          mapping, g, gene_sets = NULL,
+                          species ="Homo sapiens", database = "reactome",
+                          mapping = NULL, g = NULL, gene_sets = NULL,
                           layout = "kk", circular = FALSE,
                           hide_nodes_without_enrichment = TRUE,
                           enrichment_limits = NULL, use_node_label = TRUE,
@@ -47,6 +52,38 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores = NULL, conditi
                           res = 96, legend_position = NULL,
                           label_wrap_width = 40, edge_arrows = TRUE,
                           repel_labels = FALSE, max_depth = NULL) {
+  
+  # If either mapping, g or gene_sets is not provided use the default data provided with the package
+  if(is.null(mapping) | is.null(g) | is.null(gene_sets)) {
+    data <- load_default_data(database = database, species = species)
+    # Extract components from the loaded data
+    gs <- data$gene_sets
+    rel <- data$relations
+    
+    # Create translation layer mapping 
+    trans <- data.frame(
+      gene_sets_name = data$mapping$processed_name,
+      relation_name = data$mapping$exact_source,
+      stringsAsFactors = FALSE
+    )
+    
+    data <- load_and_preprocess_gene_sets(
+      gene_sets = gs,
+      pathways_relation = rel,
+      translation_layer = trans
+    )
+    
+    if (is.null(mapping)) {
+      mapping <- data$mapping
+    }
+    if (is.null(g)) {
+      g <- data$pathway_graph
+    }
+    if (is.null(gene_sets)) {
+      gene_sets <- data$gene_sets
+    }
+  }
+  
   if (!parent_geneset_name %in% mapping$processed_name) {
     stop("Parent pathway not found in the mapping.")
   }
@@ -87,7 +124,9 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores = NULL, conditi
   }
 
   normal_nodes <- V(sub_g)$name[!(grepl("^ellipsis_for_", V(sub_g)$name))]
-  V(sub_g)$label[!(grepl("^ellipsis_for_", V(sub_g)$name))] <- mapping$processed_name[match(normal_nodes, mapping$exact_source)]
+  V(sub_g)$label[!(grepl("^ellipsis_for_",
+                         V(sub_g)$name))] <- mapping$processed_name[match(normal_nodes,
+                                                                          mapping$exact_source)]
 
   missing_labels <- is.na(V(sub_g)$label) & !grepl("^ellipsis_for_", V(sub_g)$name) & V(sub_g)$name != parent_exact_source
   if (any(missing_labels)) {

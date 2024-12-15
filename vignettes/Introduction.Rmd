@@ -30,48 +30,24 @@ library(magrittr)
 ```
 
 # Data preparation
-
-## Loading Gene Sets and building Pathway Graph
-
-```{r}
-# Load the default data for analyses (MsigDB REACTOME dataset or MsigDB GOBP terms). This data is already preprocessed.
-default_data <- load_default_data(database = "reactome", species = "Homo sapiens")
-
-# Extract components from the loaded data
-gene_sets <- default_data$gene_sets
-relations <- default_data$relations
-
-# Create translation layer mapping (EXAMPLE, NOT NECESSARY WHEN USING DEFAULT DATA)
-trans <- data.frame(
-  gene_sets_name = default_data$mapping$processed_name,
-  relation_name = default_data$mapping$exact_source,
-  stringsAsFactors = FALSE
-)
-
-# Preprocess gene sets using the mapping and relations (EXAMPLE, NOT NECESSARY WHEN USING DEFAULT DATA)
-# In order to process the data we require two things; a list of genesets and a dataframe of pathway relations. The geneset list must contain named lists of genes, with the names corresponding to the geneset. The pathway relations dataframe must contain a column named "parent" and "child", indicating which nodes in the hierarchy should be linked and how. An optional third relation column describes the relation - e.g. for GO pathways you can have a pathway regulate another.
-# A translation_layer dataframe is required if the pathway names in you relation dataframe does not match those in the geneset dataframe. It must contain two columns, gene_sets_name and relation_name.
-preprocessed_data <- load_and_preprocess_gene_sets(
-  gene_sets = gene_sets,
-  pathways_relation = relations,
-  translation_layer = trans
-)
-
-# Unpack the preprocessed data
-gene_sets <- preprocessed_data$gene_sets
-mapping <- preprocessed_data$mapping
-g <- preprocessed_data$pathway_graph
-```
-
 ## Loading Example Enrichment Scores
 
 ```{r}
+# First we define which database and species we want to look at. Currently, the "reactome" and "GO" are supported through the MsigDB databases. Human ("Homo sapiens") and ("Mus musculus") are currently supported. However, custom data can be provided - see the final part of this vignette for an example using the included data.
+
+database = "reactome"
+species = "Homo sapiens"
+
+# Load the default included data to generate example dataset
+default_data <- load_default_data(database = database, species = species)
+
+
 # Generate example dataset. Note that the example data is randomly generated using rnorm(length(gene_sets), sd = 0.25) and thus does not reflect real conditions or output from a pathway analysis.
-enrichment_scores <- data.frame(Condition.1 = rnorm(length(gene_sets), sd = 0.25),
-                                Condition.2 = rnorm(length(gene_sets), sd = 0.25),
-                                Condition.3 = rnorm(length(gene_sets), sd = 0.25),
-                                Condition.4 = rnorm(length(gene_sets), sd = 0.25))
-rownames(enrichment_scores) <- names(gene_sets)
+enrichment_scores <- data.frame(Condition.1 = rnorm(length(default_data$gene_sets), sd = 0.25),
+                                Condition.2 = rnorm(length(default_data$gene_sets), sd = 0.25),
+                                Condition.3 = rnorm(length(default_data$gene_sets), sd = 0.25),
+                                Condition.4 = rnorm(length(default_data$gene_sets), sd = 0.25))
+rownames(enrichment_scores) <- names(default_data$gene_sets)
 conditions <- colnames(enrichment_scores)
 ```
 
@@ -87,11 +63,10 @@ parent_name <- "Signaling By Tgfb Family Members" # REACTOME
 # Plotting multiple conditions
 p1 <- plot_subgraph(
   parent_geneset_name = parent_name,
+  database = database,
+  species = species,
   enrichment_scores = enrichment_scores,
   conditions = conditions,
-  mapping = mapping,
-  g = g,
-  gene_sets = gene_sets,
   layout = "kk",
   hide_nodes_without_enrichment = TRUE,
   enrichment_limits = NULL,
@@ -111,9 +86,8 @@ p2 <- plot_subgraph(
   parent_geneset_name = parent_name,
   enrichment_scores = enrichment_scores,
   conditions = conditions,
-  mapping = mapping,
-  g = g,
-  gene_sets = gene_sets,
+  database = database,
+  species = species,
   layout = "kk",
   hide_nodes_without_enrichment = TRUE,
   enrichment_limits = NULL,
@@ -134,9 +108,8 @@ p3 <- plot_subgraph(
   parent_geneset_name = parent_name,
   enrichment_scores = enrichment_scores,
   conditions = conditions,
-  mapping = mapping,
-  g = g,
-  gene_sets = gene_sets,
+  database = database,
+  species = species,
   layout = "kk",
   hide_nodes_without_enrichment = TRUE,
   enrichment_limits = NULL,
@@ -159,9 +132,8 @@ p4 <- plot_subgraph(
   parent_geneset_name = "Metabolism Of Lipids",
   enrichment_scores = enrichment_scores,
   conditions = "Condition.3",
-  mapping = mapping,
-  g = g,
-  gene_sets = gene_sets,
+  database = database,
+  species = species,
   layout = "fr",
   hide_nodes_without_enrichment = TRUE,
   enrichment_limits = NULL,
@@ -176,14 +148,13 @@ print(p4)
 Focus on a single condition to explore specific pathway enrichments without the complexity of multiple comparisons. Here we limit the graph depth to 2
 
 ```{r}
-# Plotting a subgraph for a single condition
+# Plotting a subgraph for a single condition. Limit the depth of the graph to 2 to limit the confusion from too many nodes.
 p5 <- plot_subgraph(
   parent_geneset_name = "Metabolism Of Lipids",
   enrichment_scores = enrichment_scores,
   conditions = "Condition.3",
-  mapping = mapping,
-  g = g,
-  gene_sets = gene_sets,
+  database = database,
+  species = species,
   layout = "fr",
   hide_nodes_without_enrichment = TRUE,
   enrichment_limits = NULL,
@@ -203,9 +174,8 @@ If you don't know where to start, a shiny app is available to explore the pathwa
 ```{r, out.width = "200%"}
 run_pathway_shiny_app(enrichment_scores,
   conditions,
-  mapping,
-  g,
-  gene_sets,
+  database = database,
+  species = species,
   enrichment_limits = NULL,
   glyph_size = c(80, 60),
   res = 96,
@@ -218,6 +188,54 @@ run_pathway_shiny_app(enrichment_scores,
     options = NULL
   )
 )
+```
+
+# Using custom pathway data
+## Creating custom pathway graph, gene_sets and mapping. Here, the default package data is used but any data of a similar format should work
+```{r}
+# Load the default data for analyses (MsigDB REACTOME dataset or MsigDB GOBP terms). This data is already preprocessed, but we will use it as an example of how the data should look.
+default_data <- load_default_data(database = "reactome", species = "Homo sapiens")
+
+# Extract components from the loaded data
+gene_sets <- default_data$gene_sets
+relations <- default_data$relations
+
+# Create translation layer mapping 
+trans <- data.frame(
+  gene_sets_name = default_data$mapping$processed_name,
+  relation_name = default_data$mapping$exact_source,
+  stringsAsFactors = FALSE
+)
+
+# Preprocess gene sets using the mapping and relations 
+# In order to process the data we require two things; a list of genesets and a dataframe of pathway relations. The geneset list must contain named lists of genes, with the names corresponding to the geneset. The pathway relations dataframe must contain a column named "parent" and "child", indicating which nodes in the hierarchy should be linked and how. An optional third relation column describes the relation - e.g. for GO pathways you can have a pathway regulate another.
+# A translation_layer dataframe is required if the pathway names in you relation dataframe does not match those in the geneset dataframe. It must contain two columns, gene_sets_name and relation_name.
+preprocessed_data <- load_and_preprocess_gene_sets(
+  gene_sets = gene_sets,
+  pathways_relation = relations,
+  translation_layer = trans
+)
+
+# Unpack the preprocessed data
+gene_sets <- preprocessed_data$gene_sets
+mapping <- preprocessed_data$mapping
+g <- preprocessed_data$pathway_graph
+
+p6 <- plot_subgraph(
+  parent_geneset_name = parent_name,
+  mapping = mapping,
+  g = g,
+  gene_sets = gene_sets,
+  enrichment_scores = enrichment_scores,
+  conditions = conditions,
+  layout = "kk",
+  hide_nodes_without_enrichment = TRUE,
+  enrichment_limits = NULL,
+  use_node_label = TRUE
+)
+
+print(p6)
+
 ```
 
 # Conclusion
