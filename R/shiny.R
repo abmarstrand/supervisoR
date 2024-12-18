@@ -117,7 +117,6 @@ run_pathway_shiny_app <- function(
 
   ui <- fluidPage(
     titlePanel("supervisoR Shiny App"),
-
     sidebarLayout(
       sidebarPanel(
         h4("Instructions"),
@@ -169,17 +168,14 @@ run_pathway_shiny_app <- function(
         actionButton("reset", "Reset View"),
         actionButton("back", "Back"),
         br(), br(),
-
         h4("Legend"),
         p("Glyphs represent enrichment scores across conditions."),
-
         # Add the dynamic ggplot legend below the legend text
         plotOutput("legend_plot", height = "250px"),  # Adjust height as needed
         br(), br(),
         # Help button
         actionButton("help", "Help")
       ),
-
       mainPanel(
         visNetworkOutput("pathway_network", height = "90vh")
       )
@@ -187,11 +183,11 @@ run_pathway_shiny_app <- function(
     tags$script(HTML("
       $(window).on('resize', function() {
         var width = $(window).width();
-        var cutoff = Math.floor(width / 300); // Adjust based on desired width per gene
+        var cutoff = Math.floor(width / 300); 
         Shiny.setInputValue('cutoff_update', cutoff, {priority: 'event'});
       });
       $(document).ready(function() {
-        $(window).trigger('resize'); // Trigger on load to set initial value
+        $(window).trigger('resize');
       });
     ")),
     uiOutput("gene_modal")
@@ -293,7 +289,7 @@ run_pathway_shiny_app <- function(
       withProgress(message = "Generating Glyph Images...", value = 0, {
         g_current <- current_graph()
         data_hash <- digest::digest(list(enrichment_scores = filtered_enrichment_scores(),
-                                         conditions = selected_comparisons()), algo = "md5")
+                                         conditions = selected_comparisons()), algo = "spookyhash")
         # Generate glyph images with caching based on filtered enrichment scores
         glyphs <- generate_glyph_images_cached(
           g = g_current,

@@ -47,15 +47,16 @@ create_glyph_on_the_fly <- function(pathway,
   # Convert to data frame for plotting
   df <- data.frame(
     Condition = factor(conditions, levels = conditions),
-    Enrichment = as.numeric(scores_glyph[1, ])
+    Enrichment = as.numeric(scores_glyph[1, ]),
+    stringsAsFactors = FALSE
   )
   # Create the bar plot with transparent background
   p_plot <- ggplot(df, aes(x = Condition,
                            y = Enrichment,
                            fill = Enrichment)) +
-    geom_bar(stat = "identity", na.rm = TRUE) +
+    geom_col(na.rm = TRUE) +
     scale_x_discrete(expand = expansion(0, 0)) +
-    ylim(enrichment_limits[1], enrichment_limits[2]*1.1) +
+    ylim(enrichment_limits[1], enrichment_limits[2]*1.01) +
     scale_fill_continuous_diverging(palette = "Berlin", limits = enrichment_limits) +
     theme_void() +
     geom_hline(yintercept = 0, color = "darkred", linewidth = 0.5) +
@@ -256,7 +257,7 @@ generate_glyph_images_cached <- function(
   }
 
   # Compute a hash of the enrichment_scores and conditions for cache invalidation
-  data_hash <- digest(list(enrichment_scores = enrichment_scores, conditions = conditions), algo = "md5")
+  data_hash <- digest(list(enrichment_scores = enrichment_scores, conditions = conditions), algo = "spookyhash")
   hash_filepath <- file.path(cache_dir, "data_hash.txt")
 
   # Check if we should regenerate glyphs
@@ -286,17 +287,24 @@ generate_glyph_images_cached <- function(
   # Retrieve all pathways present in the graph
   pathway_nodes <- setdiff(V(g)$label, "Root")
   total_pathways <- length(pathway_nodes)
+  
+  sanitized_names <- vapply(pathway_nodes, sanitize_filename, FUN.VALUE = character(1))
+  filepaths <- file.path(cache_dir, paste0(sanitized_names, ".png"))
+  
+  glyph_images <- vector("list", length = total_pathways)
 
   # Progress bar setup
   if (!is.null(progress)) {
     progress$set(message = "Generating Glyphs", value = 0)
+    increment_value <- 1 / total_pathways
   }
 
   # Iterate over each pathway
-  for (pathway in pathway_nodes) {
+  for (i in seq_len(total_pathways)) {
     # Define the file path for the glyph image
-    img_filename <- paste0(sanitize_filename(pathway), ".png")
-    img_filepath <- file.path(cache_dir, img_filename)
+    pathway <- pathway_nodes[i]
+    img_filepath <- filepaths[i]
+    
     if (!file.exists(img_filepath) || regenerate) {
       img <- tryCatch({
         create_glyph_on_the_fly(
@@ -314,22 +322,23 @@ generate_glyph_images_cached <- function(
       if (!is.null(img)) {
         image_write(img, path = img_filepath, format = "png")
         encoded_img <- base64enc::dataURI(file = img_filepath, mime = "image/png")
-        glyph_images[[pathway]] <- encoded_img
+        glyph_images[[i]] <- encoded_img
       } else {
-        glyph_images[[pathway]] <- NA
+        glyph_images[[i]] <- NA
       }
     } else {
       # Use cached image
       encoded_img <- base64enc::dataURI(file = img_filepath, mime = "image/png")
-      glyph_images[[pathway]] <- encoded_img
+      glyph_images[[i]] <- encoded_img
     }
     # Update progress if provided
     if (!is.null(progress)) {
-      progress$inc(1 / total_pathways, detail = paste("Processing:", pathway))
+      progress$inc(amount = increment_value, detail = paste("Processing:", pathway))
     }
   }
   if (!is.null(progress)) {
     progress$close()
   }
+  names(glyph_images) <- pathway_nodes
   return(glyph_images)
 }

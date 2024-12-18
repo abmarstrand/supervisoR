@@ -31,6 +31,7 @@ load_default_data <- function(database = "reactome",
     )
   )
   db_params <- params[[database]]
+
   # Load msigdbr data
   msigdb_init <- msigdbr(
     species = species,
@@ -57,7 +58,7 @@ load_default_data <- function(database = "reactome",
     distinct()
 
   # Read the parent-child relationships
-  relations <- read_tsv(db_params$path, col_names = TRUE)
+  relations <- read_tsv(db_params$path, col_names = TRUE, show_col_types = FALSE)
 
   # Ensure 'relation' column is present
   # If not present (Reactome), create it and set to NA
@@ -72,37 +73,88 @@ load_default_data <- function(database = "reactome",
 
   # If there are intermediates, flatten the hierarchy in a vectorized manner
   if (length(intermediates) > 0) {
-    # For each intermediate node, we want to connect its parents directly to its children
-    # 1. Find all parents of intermediates
+    # Identify edges where child is intermediate
     child_is_intermediate <- relations$child %in% intermediates
-    parents_by_intermediate <- tapply(relations$parent[child_is_intermediate],
-                                      relations$child[child_is_intermediate], unique)
-    # 2. Find all children of intermediates
+    # Identify edges where parent is intermediate
     parent_is_intermediate <- relations$parent %in% intermediates
-    children_by_intermediate <- tapply(relations$child[parent_is_intermediate],
-                                       relations$parent[parent_is_intermediate], unique)
-    # 3. Remove all edges involving intermediate nodes
-    relations <- relations[!(relations$parent %in% intermediates | relations$child %in% intermediates), ]
-    # 4. For each intermediate node, create direct parent-child links
-    new_edges_list <- lapply(names(parents_by_intermediate), function(node) {
-      node_parents <- parents_by_intermediate[[node]]
-      node_children <- children_by_intermediate[[node]]
+    
+    # Split parents by intermediate child
+    # parents_by_intermediate[[node]] = all parents of that intermediate node
+    parents_by_intermediate <- split(relations$parent[child_is_intermediate],
+                                     relations$child[child_is_intermediate])
+    parents_by_intermediate <- lapply(parents_by_intermediate, unique)
+    
+    # Split children by intermediate parent
+    # children_by_intermediate[[node]] = all children of that intermediate node
+    children_by_intermediate <- split(relations$child[parent_is_intermediate],
+                                      relations$parent[parent_is_intermediate])
+    children_by_intermediate <- lapply(children_by_intermediate, unique)
+    
+    # Remove all edges involving intermediate nodes
+    keep_edges <- !(relations$parent %in% intermediates | relations$child %in% intermediates)
+    relations <- relations[keep_edges, , drop = FALSE]
+    
+    # Create a list to store new edges
+    node_names <- intersect(names(parents_by_intermediate), names(children_by_intermediate))
+    total_expansions <- 0L
+    np_vec <- integer(length(node_names))
+    nc_vec <- integer(length(node_names))
+    
+    for (i in seq_along(node_names)) {
+      node_parents <- parents_by_intermediate[[ node_names[i] ]]
+      node_children <- children_by_intermediate[[ node_names[i] ]]
       if (!is.null(node_children) && length(node_parents) > 0 && length(node_children) > 0) {
-        # Include the 'relation' column here as well, set to NA
-        expand.grid(parent = node_parents, child = node_children, relation = NA_character_, stringsAsFactors = FALSE)
+        np <- length(node_parents)
+        nc <- length(node_children)
+        expansions <- np * nc
+        np_vec[i] <- np
+        nc_vec[i] <- nc
+        total_expansions <- total_expansions + expansions
       } else {
-        # Return a zero-row data frame with the correct columns
-        data.frame(parent = character(0),
-                   child = character(0),
-                   relation = character(0),
-                   stringsAsFactors = FALSE)
+        np_vec[i] <- 0L
+        nc_vec[i] <- 0L
       }
-    })
-    # Filter out any NULL entries
-    new_edges_list <- Filter(function(x) !is.null(x), new_edges_list)
-    if (length(new_edges_list) > 0) {
-      new_edges <- do.call(rbind, new_edges_list)
-      # Add and remove duplicates
+    }
+    
+    if (total_expansions > 0) {
+      # Pre-allocate the vectors
+      all_parents <- character(total_expansions)
+      all_children <- character(total_expansions)
+      all_relations <- rep(NA_character_, total_expansions)
+      
+      # Fill them
+      pos <- 1L
+      for (i in seq_along(node_names)) {
+        np <- np_vec[i]
+        nc <- nc_vec[i]
+        if (np > 0 && nc > 0) {
+          node_parents <- parents_by_intermediate[[ node_names[i] ]]
+          node_children <- children_by_intermediate[[ node_names[i] ]]
+          expansions <- np * nc
+          
+          # Create parent/child sequences
+          # parent repeated for each child's group
+          # child repeated for each parent's group
+          parents_block <- rep(node_parents, times = nc)
+          children_block <- rep(node_children, each = np)
+          
+          # Fill the allocated space
+          all_parents[pos:(pos + expansions - 1L)] <- parents_block
+          all_children[pos:(pos + expansions - 1L)] <- children_block
+          # all_relations is already NA_character_
+          pos <- pos + expansions
+        }
+      }
+      
+      # Create a single data frame of new edges
+      new_edges <- data.frame(
+        parent = all_parents,
+        child = all_children,
+        relation = all_relations,
+        stringsAsFactors = FALSE
+      )
+      
+      # Combine and ensure uniqueness
       relations <- unique(rbind(relations, new_edges))
     }
   }
