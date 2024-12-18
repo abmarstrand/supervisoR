@@ -17,8 +17,9 @@
 #' @importFrom stringr str_wrap
 #' @importFrom grid arrow unit
 #' @param parent_geneset_name Name of the parent geneset. This is used to extract the subgraph of interest.
-#' @param enrichment_scores Data frame of enrichment scores (rows are pathways, columns are conditions).
+#' @param enrichment_scores Dataframe of enrichment scores (rows are pathways, columns are conditions).
 #' @param conditions Character vector of conditions to include in the glyphs.
+#' @param pathway_column Character, integer or NULL. Name/index of the column which contains the pathway names in the enrichment score dataframe. Defaults to \code{1L} If set to NULL, it will use the rownames to identify the pathway for each row. 
 #' @param species String describing which species to use. Currently supports "Homo sapiens" or "Mus musculus". Ignored if mapping, g and gene_sets are provided.
 #' @param database String describing which database to use. Currently supports "reactome" and "GO, which are the MsigDB versions of the full REACTOME database and the GOBP terms. Ignored if mapping, g and gene_sets are provided.
 #' @param mapping Optional data frame containing mapping information used for translating between pathway IDs and names. Must have two columns called processed_name and exact_source containing the names and IDs respectively. See load_and_preprocess_gene_sets() for details on how to generate this.
@@ -42,7 +43,7 @@
 #' @return A ggplot object representing the subgraph.
 #' @export
 plot_subgraph <- function(parent_geneset_name, enrichment_scores = NULL, conditions = NULL,
-                          species ="Homo sapiens", database = "reactome",
+                          pathway_column = 1L, species ="Homo sapiens", database = "reactome",
                           mapping = NULL, g = NULL, gene_sets = NULL,
                           layout = "kk", circular = FALSE,
                           hide_nodes_without_enrichment = TRUE,
@@ -83,6 +84,16 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores = NULL, conditi
       gene_sets <- data$gene_sets
     }
   }
+  
+  if (!is.null(pathway_column)) {
+    if (is.character(enrichment_scores[,pathway_column])) {
+      rownames(enrichment_scores) <- enrichment_scores[,pathway_column]
+      enrichment_scores <- enrichment_scores[,-pathway_column, drop = F]
+    } else {
+      stop("Pathway column does not contain characters. Check whether you have selected to correct column containing pathway names")
+    }
+  }
+  
   
   if (!parent_geneset_name %in% mapping$processed_name) {
     stop("Parent pathway not found in the mapping.")
@@ -133,10 +144,15 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores = NULL, conditi
     sub_g <- delete_vertices(sub_g, V(sub_g)[missing_labels])
   }
 
+  if (!is.null(reference) && reference %in% colnames(enrichment_scores) && is.null(conditions)) {
+    enrichment_scores <- enrichment_scores - enrichment_scores[, reference, drop = TRUE]
+    conditions <- setdiff(colnames(enrichment_scores), reference)
+  }
+  
   if (!is.null(enrichment_scores) && !is.null(conditions)) {
-    if (!is.null(reference) && reference %in% conditions) {
+    if (!is.null(reference) && reference %in% colnames(enrichment_scores)) {
       enrichment_scores <- enrichment_scores - enrichment_scores[, reference, drop = TRUE]
-      conditions <- setdiff(conditions, reference)
+      conditions <- setdiff(colnames(enrichment_scores), reference)
     }
     node_labels <- V(sub_g)$label
     valid_labels <- node_labels[node_labels %in% rownames(enrichment_scores)]

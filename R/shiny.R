@@ -19,6 +19,7 @@
 #'   containing enrichment scores. Pathways should correspond to the labels in the pathway graph.
 #' @param conditions A character vector specifying the conditions to visualize. These should match
 #'   the column names in enrichment_scores.
+#' @param pathway_column Character, integer or NULL. Name/index of the column which contains the pathway names in the enrichment score dataframe. Defaults to \code{1L} If set to NULL, it will use the rownames to identify the pathway for each row. 
 #' @param species String describing which species to use. Currently supports "Homo sapiens" or "Mus musculus". Ignored if mapping, g and gene_sets are provided.
 #' @param database String describing which database to use. Currently supports "reactome" and "GO, which are the MsigDB versions of the full REACTOME database and the GOBP terms. Ignored if mapping, g and gene_sets are provided.
 #' @param mapping Optional data frame containing mapping information used for translating between pathway IDs and names. Must have two columns called processed_name and exact_source containing the names and IDs respectively. See load_and_preprocess_gene_sets() for details on how to generate this.
@@ -41,6 +42,7 @@
 run_pathway_shiny_app <- function(
   enrichment_scores,         # Data frame: pathways x conditions
   conditions,                # Character vector: conditions to visualize
+  pathway_column = 1L,
   species ="Homo sapiens",
   database = "reactome",
   mapping = NULL,                   # Data frame: pathway to exact_source mapping
@@ -88,6 +90,15 @@ run_pathway_shiny_app <- function(
     }
     if (is.null(gene_sets)) {
       gene_sets <- data$gene_sets
+    }
+  }
+  
+  if (!is.null(pathway_column)) {
+    if (is.character(enrichment_scores[,pathway_column])) {
+      rownames(enrichment_scores) <- enrichment_scores[,pathway_column]
+      enrichment_scores <- enrichment_scores[,-pathway_column, drop = F]
+    } else {
+      stop("Pathway column does not contain characters. Check whether you have selected to correct column containing pathway names")
     }
   }
   # Prepare list of all pathways for search

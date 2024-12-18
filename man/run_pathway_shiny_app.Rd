@@ -7,6 +7,7 @@
 run_pathway_shiny_app(
   enrichment_scores,
   conditions,
+  pathway_column = 1L,
   species = "Homo sapiens",
   database = "reactome",
   mapping = NULL,
@@ -26,6 +27,8 @@ containing enrichment scores. Pathways should correspond to the labels in the pa
 
 \item{conditions}{A character vector specifying the conditions to visualize. These should match
 the column names in enrichment_scores.}
+
+\item{pathway_column}{Character, integer or NULL. Name/index of the column which contains the pathway names in the enrichment score dataframe. Defaults to \code{1L} If set to NULL, it will use the rownames to identify the pathway for each row.}
 
 \item{species}{String describing which species to use. Currently supports "Homo sapiens" or "Mus musculus". Ignored if mapping, g and gene_sets are provided.}
 

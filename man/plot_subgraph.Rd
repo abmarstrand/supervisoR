@@ -8,6 +8,7 @@ plot_subgraph(
   parent_geneset_name,
   enrichment_scores = NULL,
   conditions = NULL,
+  pathway_column = 1L,
   species = "Homo sapiens",
   database = "reactome",
   mapping = NULL,
@@ -33,9 +34,11 @@ plot_subgraph(
 \arguments{
 \item{parent_geneset_name}{Name of the parent geneset. This is used to extract the subgraph of interest.}
 
-\item{enrichment_scores}{Data frame of enrichment scores (rows are pathways, columns are conditions).}
+\item{enrichment_scores}{Dataframe of enrichment scores (rows are pathways, columns are conditions).}
 
 \item{conditions}{Character vector of conditions to include in the glyphs.}
+
+\item{pathway_column}{Character, integer or NULL. Name/index of the column which contains the pathway names in the enrichment score dataframe. Defaults to \code{1L} If set to NULL, it will use the rownames to identify the pathway for each row.}
 
 \item{species}{String describing which species to use. Currently supports "Homo sapiens" or "Mus musculus". Ignored if mapping, g and gene_sets are provided.}
 
