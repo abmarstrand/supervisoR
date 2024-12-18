@@ -2,7 +2,7 @@
 #'
 #' Generates a glyph for a single pathway by creating a bar plot of enrichment scores across specified conditions.
 #'
-#' @importFrom ggplot2 ggplot aes geom_bar theme_void scale_x_discrete geom_hline theme element_blank
+#' @importFrom ggplot2 ggplot aes geom_bar theme_void scale_x_discrete geom_hline theme element_blank ylim
 #' @importFrom ragg agg_png
 #' @importFrom magick image_read
 #' @importFrom colorspace scale_fill_continuous_diverging
@@ -55,7 +55,7 @@ create_glyph_on_the_fly <- function(pathway,
                            fill = Enrichment)) +
     geom_bar(stat = "identity", na.rm = TRUE) +
     scale_x_discrete(expand = expansion(0, 0)) +
-    ylim(enrichment_limits) +
+    ylim(enrichment_limits[1], enrichment_limits[2]*1.1) +
     scale_fill_continuous_diverging(palette = "Berlin", limits = enrichment_limits) +
     theme_void() +
     geom_hline(yintercept = 0, color = "darkred", linewidth = 0.5) +

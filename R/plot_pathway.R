@@ -46,7 +46,7 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores = NULL, conditi
                           pathway_column = 1L, species ="Homo sapiens", database = "reactome",
                           mapping = NULL, g = NULL, gene_sets = NULL,
                           layout = "kk", circular = FALSE,
-                          hide_nodes_without_enrichment = TRUE,
+                          hide_nodes_without_enrichment = FALSE,
                           enrichment_limits = NULL, use_node_label = TRUE,
                           reference = NULL, adjust_edge_thickness = FALSE,
                           edge_percentage_labels = FALSE, glyph_size = c(80, 60),
@@ -143,10 +143,9 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores = NULL, conditi
   if (any(missing_labels)) {
     sub_g <- delete_vertices(sub_g, V(sub_g)[missing_labels])
   }
-
-  if (!is.null(reference) && reference %in% colnames(enrichment_scores) && is.null(conditions)) {
-    enrichment_scores <- enrichment_scores - enrichment_scores[, reference, drop = TRUE]
-    conditions <- setdiff(colnames(enrichment_scores), reference)
+  
+  if (length(colnames(enrichment_scores)) >= 1 && is.null(conditions)) {
+    conditions <- colnames(enrichment_scores)
   }
   
   if (!is.null(enrichment_scores) && !is.null(conditions)) {
@@ -173,6 +172,11 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores = NULL, conditi
     }
     if (is.null(enrichment_limits) && !is.null(scores)) {
       enrichment_limits <- range(scores, na.rm = TRUE)
+      if (sum(sign(enrichment_limits)) == 2) {
+        enrichment_limits[1] <- 0
+      } else if (sum(sign(enrichment_limits)) == -2) {
+        enrichment_limits[2] <- 0
+      }
     }
   }
 

@@ -16,7 +16,7 @@ plot_subgraph(
   gene_sets = NULL,
   layout = "kk",
   circular = FALSE,
-  hide_nodes_without_enrichment = TRUE,
+  hide_nodes_without_enrichment = FALSE,
   enrichment_limits = NULL,
   use_node_label = TRUE,
   reference = NULL,
