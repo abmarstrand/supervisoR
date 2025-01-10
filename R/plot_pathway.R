@@ -4,7 +4,6 @@
 #' Glyphs are generated on-the-fly using the \code{create_glyph_on_the_fly} function, allowing dynamic comparisons
 #' and efficient plotting even with a very large number of conditions.
 #' 
-#' If no custom 
 #'
 #' @importFrom igraph subcomponent induced_subgraph V delete_vertices ends `V<-` E `E<-` distances edge_attr neighbors
 #' @importFrom ggraph ggraph create_layout geom_edge_link geom_node_label geom_node_text scale_edge_color_manual  scale_edge_width geom_node_point circle scale_edge_linetype_manual
