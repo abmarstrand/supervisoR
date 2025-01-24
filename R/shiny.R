@@ -101,6 +101,7 @@ run_pathway_shiny_app <- function(
       stop("Pathway column does not contain characters. Check whether you have selected to correct column containing pathway names")
     }
   }
+  
   # Prepare list of all pathways for search
   all_pathways <- unique(mapping$processed_name)
   names(all_pathways) <- all_pathways

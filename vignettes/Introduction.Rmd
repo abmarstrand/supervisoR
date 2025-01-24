@@ -232,6 +232,7 @@ p6 <- plot_subgraph(
   mapping = mapping,
   g = g,
   gene_sets = gene_sets,
+  pathway_column = NULL, # WE SET THIS TO NULL SINCE WE HAVE THE PATHWAYS AS ROWNAMES. OTHERWISE, SPECIFY THE COLUMN BY EITHER INDEX OR NAME,
   enrichment_scores = enrichment_scores,
   conditions = conditions,
   layout = "kk",
