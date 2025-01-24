@@ -2,7 +2,7 @@
 #'
 #' Generates a glyph for a single pathway by creating a bar plot of enrichment scores across specified conditions.
 #'
-#' @importFrom ggplot2 ggplot aes geom_bar theme_void scale_x_discrete geom_hline theme element_blank ylim
+#' @importFrom ggplot2 ggplot aes geom_bar theme_void scale_x_discrete geom_hline theme element_blank ylim geom_col
 #' @importFrom ragg agg_png
 #' @importFrom magick image_read
 #' @importFrom colorspace scale_fill_continuous_diverging

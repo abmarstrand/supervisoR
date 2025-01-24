@@ -88,6 +88,3 @@ Plots a subgraph with nodes represented by glyphs that visualize enrichment scor
 Glyphs are generated on-the-fly using the \code{create_glyph_on_the_fly} function, allowing dynamic comparisons
 and efficient plotting even with a very large number of conditions.
 }
-\details{
-If no custom
-}
