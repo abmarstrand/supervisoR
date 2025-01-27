@@ -1,7 +1,7 @@
 Package: supervisoR
 Type: Package
 Title: Pathway Enrichment Visualization
-Version: 0.99.0
+Version: 1.0
 Author: person("Hans Adam Boegh", "Marstrand-Joergensen",
   email = "adamboegh@gmail.com",
   role = c("cre","aut"),
