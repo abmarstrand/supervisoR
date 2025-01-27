@@ -17,6 +17,7 @@ run_pathway_shiny_app(
   glyph_size = c(80, 60),
   res = 96,
   cache_dir = file.path(tempdir(), "glyph_cache"),
+  hide_nodes_without_enrichment = T,
   layout_options_plot = list(layout = "layout_with_dh", physics = FALSE, smooth = TRUE,
     type = "full", randomSeed = 42, options = NULL)
 )
@@ -52,6 +53,10 @@ Default is 96.}
 
 \item{cache_dir}{Optional character string specifying the directory to store cached glyphs.
 Default is "glyph_cache".}
+
+\item{hide_nodes_without_enrichment}{Logical. If \code{TRUE}, nodes in the pathway graph that have
+no enrichment scores (i.e., are missing scores for all \code{conditions}) will be
+removed before launching the Shiny app. Defaults to \code{FALSE}.}
 
 \item{layout_options_plot}{Optional list specifying layout options for ggraph.
 Default is list(layout = "fr", type = "full", physics = FALSE).}

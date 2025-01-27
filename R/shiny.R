@@ -36,6 +36,9 @@
 #'   Default is "glyph_cache".
 #' @param layout_options_plot Optional list specifying layout options for ggraph.
 #'   Default is list(layout = "fr", type = "full", physics = FALSE).
+#' @param hide_nodes_without_enrichment Logical. If \code{TRUE}, nodes in the pathway graph that have
+#'   no enrichment scores (i.e., are missing scores for all \code{conditions}) will be
+#'   removed before launching the Shiny app. Defaults to \code{FALSE}.
 #'
 #' @return Launches a Shiny application for interactive pathway visualization.
 #' @export
@@ -52,6 +55,7 @@ run_pathway_shiny_app <- function(
   glyph_size = c(80, 60),    # Numeric vector: width and height of glyphs in pixels
   res = 96,                  # Numeric: resolution of glyph images in DPI
   cache_dir = file.path(tempdir(), "glyph_cache"), # Character: directory to store cached glyphs
+  hide_nodes_without_enrichment = T,
   layout_options_plot = list(
     layout = "layout_with_dh",
     physics = FALSE,
@@ -102,6 +106,42 @@ run_pathway_shiny_app <- function(
     }
   }
   
+  if (hide_nodes_without_enrichment) {
+    # We rely on the 'label' attribute for graph nodes 
+    node_labels <- igraph::V(g)$label
+    # In case some nodes have NA label, coerce them to empty strings so indexing won't break
+    node_labels[is.na(node_labels)] <- ""
+    
+    # Figure out which labeled nodes have a corresponding row in enrichment_scores
+    # and whether they have scores for the given conditions
+    valid_labels <- node_labels[node_labels %in% rownames(enrichment_scores)]
+    if (length(valid_labels) > 0) {
+      # Subset only the valid labels to check for missing scores
+      scores <- enrichment_scores[valid_labels, conditions, drop = FALSE]
+      
+      # A node is "missing" if it has NA for all selected conditions
+      missing_scores <- rowSums(is.na(scores)) == length(conditions)
+      missing_scores[is.na(missing_scores)] <- TRUE  # treat any leftover NA as missing
+      
+      # Keep nodes that are not missing OR are the root or an "ellipsis_for_"
+      keep_labels <- names(missing_scores)[!missing_scores]
+      # In the graph, we reference V(g)$name to sub-select, so let's see which node 'names' to keep
+      # We'll also always keep the node named "root"
+      keep_nodes <- which(
+        (node_labels %in% keep_labels) |
+          (igraph::V(g)$name == "root") |
+          grepl("^ellipsis_for_", igraph::V(g)$name)
+      )
+      # Induce subgraph
+      g <- igraph::induced_subgraph(g, vids = keep_nodes)
+    } else {
+      # No valid labels overlap with enrichment_scores, so potentially keep only root
+      keep_nodes <- which(igraph::V(g)$name == "root" | 
+                            grepl("^ellipsis_for_", igraph::V(g)$name))
+      g <- igraph::induced_subgraph(g, vids = keep_nodes)
+    }
+  }
+  
   # Prepare list of all pathways for search
   all_pathways <- unique(mapping$processed_name)
   names(all_pathways) <- all_pathways
@@ -112,6 +152,7 @@ run_pathway_shiny_app <- function(
   gene_to_pathways <- split(pathway_list, genes_upper)
   all_genes <- sort(unique(names(gene_to_pathways)))  # all uppercase gene names
   enriched_pathways <- all_pathways[all_pathways %in% rownames(enrichment_scores)]
+  
 
   # 1. Define Shiny UI
   # -----------------------------

@@ -1,0 +1,174 @@
+---
+title: "Data_processing_example"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Data_processing_example}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Introduction
+
+This vignette uses a publically available dataset containing human kidney biopsy RNAseq from DKD patients (GSE142025) to perform an example data analysis in R using supervisoR and DESeq2. 
+
+```{r setup}
+library(supervisoR)
+library(DESeq2)
+library(dplyr)
+library(magrittr)
+library(readr)
+library(tibble)
+library(piano)
+library(tidyr)
+```
+
+# Loading data
+
+We load data directly from GEO. This code has been modified from the GEO2R website (https://www.ncbi.nlm.nih.gov/geo/geo2r) to simplify the data processing. 
+
+```{r}
+# load counts table from GEO
+urld <- "https://www.ncbi.nlm.nih.gov/geo/download/?format=file&type=rnaseq_counts"
+path <- paste(urld, "acc=GSE142025", "file=GSE142025_raw_counts_GRCh38.p13_NCBI.tsv.gz", sep="&");
+tbl <- as.matrix(read_tsv(path)) %>% `rownames<-`(., .[,1]) %>% .[,-1]
+
+# load gene annotations 
+apath <- paste(urld, "type=rnaseq_counts", "file=Human.GRCh38.p13.annot.tsv.gz", sep="&")
+annot <- read_tsv(apath, quote="")
+rownames(annot) <- annot$GeneID
+
+# sample selection
+gsms <- "000000000000000000000111111222222222"
+sml <- strsplit(gsms, split="")[[1]]
+
+# group membership for samples
+gs <- factor(sml)
+groups <- make.names(c("aDKD","eDKD","Healthy"))
+levels(gs) <- groups
+sample_info <- data.frame(Group = gs, row.names = colnames(tbl))
+
+# pre-filter low count genes
+# keep genes with at least N counts > 10, where N = size of smallest group
+keep <- rowSums( tbl >= 10 ) >= min(table(gs))
+tbl <- tbl[keep, ]
+
+ds <- DESeqDataSetFromMatrix(countData=tbl, colData=sample_info, design= ~Group)
+
+ds <- DESeq(ds, test="LRT", reduced = ~ 1)  # Use LRT for all-around gene ranking
+
+# extract results
+r_aDKD <- results(ds, contrast = c("Group", "aDKD", "Healthy"), alpha=0.05, pAdjustMethod ="BH") %>% as.data.frame()
+r_eDKD <- results(ds, contrast = c("Group", "eDKD", "Healthy"), alpha=0.05, pAdjustMethod ="BH") %>% as.data.frame()
+
+r_all <- left_join(r_aDKD %>%
+                     rownames_to_column("gene") %>%
+                     dplyr::select(gene, log2FoldChange),
+                   r_eDKD %>%
+                     rownames_to_column("gene") %>%
+                     dplyr::select(gene, log2FoldChange),
+                   by = "gene",
+                   suffix = c(".aDKD", ".eDKD")) %>%
+  left_join(.,
+            annot %>%
+              as.data.frame() %>%
+              dplyr::select(GeneID, Symbol) %>%
+              mutate_all(as.character),
+            by = c("gene" = "GeneID")) %>%
+  dplyr::select(!gene) %>%
+  dplyr::group_by(Symbol) %>%
+  dplyr::summarize(across(where(is.numeric), ~ mean(.x ))) %>%
+  ungroup() %>%
+  column_to_rownames("Symbol") %>%
+  `colnames<-`(., sub("log2FoldChange.","",colnames(.)))
+```
+
+# Run pathway analysis
+We use the piano package with fgsea to run the pathway analysis. Here we are using the included MSigDB version of the Reactome pathways, but this could be replaced with any pathway database. It should however have some hierarchical element for proper use with the supervisoR package. Take a look at the introduction vignette to see how you could use your own database for supervisoR visualization
+
+```{r}
+## We load the pathway database directly from the supervisoR package!
+default_data <- supervisoR::load_default_data(database = "reactome",
+                                  species = "Homo sapiens")
+
+res_list <- NULL
+myGSC <- piano::loadGSC(stack(default_data$gene_sets))
+for (i in colnames(r_all)) {
+  tmp_lfc <- r_all[i] %>%
+    mutate_all(~ replace_na(.x, 1))
+  
+  piano_res <- piano::runGSA(geneLevelStats = tmp_lfc, 
+    gsc = myGSC, geneSetStat = "fgsea", signifMethod = "geneSampling", 
+    nPerm = 10000, adjMethod="BH", gsSizeLim = c(5, Inf))
+  
+  tmp_res <- piano::GSAsummaryTable(piano_res) %>%
+      dplyr::select(Name,
+                    `Stat (dist.dir)`,
+                    `p adj (dist.dir.up)`,
+                    `p adj (dist.dir.dn)`) %>%
+      `colnames<-`(c("pathway",
+                     "statDistinctDir",
+                     "pAdjDistinctDirUp",
+                     "pAdjDistinctDirDn")) %>%
+      mutate(contrast = i) %>%
+      mutate_at(vars(pAdjDistinctDirUp,pAdjDistinctDirDn), ~ if_else(is.na(.), 1, .)) %>%
+      mutate(direction = case_when(pAdjDistinctDirUp > pAdjDistinctDirDn ~ "up",
+                                   pAdjDistinctDirUp < pAdjDistinctDirDn ~ "down",
+                                   T ~ "neither")) 
+  
+    res_list[[i]] <- tmp_res
+}
+
+pw_out <- do.call(rbind, unname(res_list)) %>%
+  dplyr::select(pathway, statDistinctDir, contrast) %>%
+  pivot_wider(id_cols = pathway,
+              names_from = contrast,
+              values_from = statDistinctDir) %>%
+  column_to_rownames("pathway")
+```
+
+# Visualize using supervisoR
+We can now visualize our results using both the plotting functionality and the shiny app. 
+```{r}
+p1 <- plot_subgraph(
+  parent_geneset_name = "Metabolism Of Lipids",
+  mapping = default_data$mapping,
+  g = default_data$pathway_graph,
+  gene_sets = default_data$gene_sets,
+  pathway_column = NULL, # WE SET THIS TO NULL SINCE WE HAVE THE PATHWAYS AS ROWNAMES. OTHERWISE, SPECIFY THE COLUMN BY EITHER INDEX OR NAME,
+  enrichment_scores = pw_out,
+  conditions = colnames(pw_out),
+  layout = "dh",
+  hide_nodes_without_enrichment = TRUE,
+  enrichment_limits = NULL,
+  use_node_label = TRUE,
+  repel = F,
+  max_depth = 2
+)
+
+run_pathway_shiny_app(mapping = default_data$mapping,
+  g = default_data$pathway_graph,
+  gene_sets = default_data$gene_sets,
+  pathway_column = NULL, # WE SET THIS TO NULL SINCE WE HAVE THE PATHWAYS AS ROWNAMES. OTHERWISE, SPECIFY THE COLUMN BY EITHER INDEX OR NAME,
+  enrichment_scores = pw_out,
+  conditions = colnames(pw_out),
+  enrichment_limits = NULL,
+  glyph_size = c(80, 60),
+  res = 96,
+  hide_nodes_without_enrichment = TRUE,
+  layout_options_plot = list(
+    layout = "layout_with_kk",
+    physics = FALSE,
+    smooth = FALSE,
+    type = "full",
+    randomSeed = 42,
+    options = NULL
+  )
+)
+```
