@@ -738,14 +738,14 @@ run_pathway_shiny_app <- function(
           tooltipStay = 500
         ) %>%
         visEvents(
+          type = "once",
           click = "function(nodes) {
                     Shiny.setInputValue('pathway_network_selected', nodes.nodes, {priority: 'event'});
                   }",
           afterDrawing = "function() {
-                    // Delegate event handling to the document
                     document.addEventListener('click', function(e) {
                       if (e.target && e.target.classList.contains('show-full-genes')) {
-                        e.preventDefault(); // Prevent default anchor behavior
+                        e.preventDefault();
                         var nodeName = e.target.getAttribute('data-node').trim(); // Get the data-node attribute
                         Shiny.setInputValue('tooltip_click', nodeName, {priority: 'event'}); // Send to Shiny
                       }

@@ -8,10 +8,10 @@ Author: person("Hans Adam Boegh", "Marstrand-Joergensen",
   comment = c(ORCID = "0009-0005-5917-3154"))
 Maintainer: Hans Adam Boegh Marstrand-Joergensen <adamboegh@gmail.com>
 Description: Package enabling visualization of hierarchical pathways across many conditions.
-  Currently working with REACTOME pathways, enabling exploratory data analyses of a given parent pathway and all of it's children.
-  Works for an arbitrary number of groups (tested with n=20) and with arbitrary input data, though we recommend using directional enrichment scores.
+  Currently working with REACTOME pathways, enabling exploratory data analyses of a given parent pathway and all of its children.
+  Works for an arbitrary number of groups and with arbitrary input data, though we recommend using directional enrichment scores.
   Contains both a shiny app for exploration and commands for the generation of hierarchical plots.
-License: MIT + file LICENSE
+License: MIT + LICENSE.md
 Imports:
     msigdbr,
     igraph,
