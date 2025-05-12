@@ -1,3 +1,4 @@
+[![DOI](https://zenodo.org/badge/891108332.svg)](https://doi.org/10.5281/zenodo.15386585)
 # supervisoR
 An R package for the visualization of enrichment scores in hierarchical pathway networks.
 
