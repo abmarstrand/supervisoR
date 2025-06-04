@@ -39,7 +39,8 @@
 #' @param hide_nodes_without_enrichment Logical. If \code{TRUE}, nodes in the pathway graph that have
 #'   no enrichment scores (i.e., are missing scores for all \code{conditions}) will be
 #'   removed before launching the Shiny app. Defaults to \code{FALSE}.
-#'
+#' @param lollipop_plot Bool specifying whether we should create lollipop plots (\code{TRUE}) or not (\code{FALSE}). Lollipop plots make large numbers of comparisons easier to compare than barplots, especially when combined with lollipop_colors, with a slight loss in enrichment strength fidelity.
+#' @param lollipop_colors Optional named list, specifies the colors of conditions in the lollipop plot. Names must match condititions exactly
 #' @return Launches a Shiny application for interactive pathway visualization.
 #' @export
 run_pathway_shiny_app <- function(
@@ -54,6 +55,8 @@ run_pathway_shiny_app <- function(
   enrichment_limits = NULL,  # Numeric vector: c(min, max) for enrichment
   glyph_size = c(80, 60),    # Numeric vector: width and height of glyphs in pixels
   res = 96,                  # Numeric: resolution of glyph images in DPI
+  lollipop_plot = F,
+  lollipop_colors = NULL,
   cache_dir = file.path(tempdir(), "glyph_cache"), # Character: directory to store cached glyphs
   hide_nodes_without_enrichment = T,
   layout_options_plot = list(
@@ -344,7 +347,9 @@ run_pathway_shiny_app <- function(
           res = res,
           cache_dir = file.path(cache_dir, data_hash),
           progress = Progress$new(),
-          force_regenerate = FALSE  # Set to TRUE to force cache invalidation
+          force_regenerate = FALSE,
+          lollipop_plot = lollipop_plot,
+          lollipop_colors = lollipop_colors
         )
         glyph_images(glyphs)
       })

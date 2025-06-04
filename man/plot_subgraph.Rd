@@ -28,7 +28,10 @@ plot_subgraph(
   label_wrap_width = 40,
   edge_arrows = TRUE,
   repel_labels = FALSE,
-  max_depth = NULL
+  node_label_size = 1,
+  max_depth = NULL,
+  lollipop_plot = F,
+  lollipop_colors = NULL
 )
 }
 \arguments{
@@ -78,7 +81,13 @@ plot_subgraph(
 
 \item{repel_labels}{Logical, whether to repel labels to avoid overlaps. Default is \code{FALSE}. If you have a very large graph it is reccommended to try this out.}
 
+\item{node_label_size}{Numerical, specifying the size of the node labels.}
+
 \item{max_depth}{Integer, specifying the maximal depth shown at one time on the graph. Defaults to \code{NULL}. If you have a very large graph it is reccommended to try this out.}
+
+\item{lollipop_plot}{Bool specifying whether we should create lollipop plots (\code{TRUE}) or not (\code{FALSE}). Lollipop plots make large numbers of comparisons easier to compare than barplots, especially when combined with lollipop_colors, with a slight loss in enrichment strength fidelity.}
+
+\item{lollipop_colors}{Optional named list, specifies the colors of conditions in the lollipop plot. Names must match condititions exactly}
 }
 \value{
 A ggplot object representing the subgraph.

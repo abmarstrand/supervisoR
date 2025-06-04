@@ -2,10 +2,10 @@
 #'
 #' Generates a glyph for a single pathway by creating a bar plot of enrichment scores across specified conditions.
 #'
-#' @importFrom ggplot2 ggplot aes geom_bar theme_void scale_x_discrete geom_hline theme element_blank ylim geom_col
+#' @importFrom ggplot2 ggplot aes geom_bar theme_void scale_x_discrete geom_hline theme element_blank ylim geom_col scale_color_manual geom_point geom_segment scale_y_discrete
 #' @importFrom ragg agg_png
 #' @importFrom magick image_read
-#' @importFrom colorspace scale_fill_continuous_diverging
+#' @importFrom colorspace scale_fill_continuous_diverging scale_color_continuous_diverging
 #' @importFrom rlang .data
 #' @importFrom grDevices dev.off
 #' @param pathway Character string representing the pathway name.
@@ -14,6 +14,8 @@
 #' @param enrichment_limits Numeric vector of length 2 specifying the enrichment limits.
 #' @param glyph_size Numeric vector specifying the width and height of the glyph in pixels. Default is \code{c(80, 60)}.
 #' @param res Numeric value specifying the resolution of the image in dpi. Default is 96.
+#' @param lollipop_plot Bool specifying whether we should create lollipop plots (\code{TRUE}) or not (\code{FALSE}). Lollipop plots make large numbers of comparisons easier to compare than barplots, especially when combined with lollipop_colors, with a slight loss in enrichment strength fidelity.
+#' @param lollipop_colors Optional named list, specifies the colors of conditions in the lollipop plot. Names must match condititions exactly
 #' @return A magick image representing the glyph for the pathway as well as the local path to the image.
 #' @examples
 #' # Example usage:
@@ -35,7 +37,9 @@ create_glyph_on_the_fly <- function(pathway,
                                     enrichment_scores,
                                     enrichment_limits,
                                     glyph_size = c(80, 60),
-                                    res = 96) {
+                                    res = 96,
+                                    lollipop_plot = T,
+                                    lollipop_colors = NULL) {
   # Get enrichment scores for the pathway and specified conditions
   scores_glyph <- enrichment_scores[pathway, conditions, drop = FALSE]
 
@@ -50,22 +54,44 @@ create_glyph_on_the_fly <- function(pathway,
     Enrichment = as.numeric(scores_glyph[1, ]),
     stringsAsFactors = FALSE
   )
-  # Create the bar plot with transparent background
-  p_plot <- ggplot(df, aes(x = Condition,
-                           y = Enrichment,
-                           fill = Enrichment)) +
-    geom_col(na.rm = TRUE) +
-    scale_x_discrete(expand = expansion(0, 0)) +
-    ylim(enrichment_limits[1], enrichment_limits[2]*1.01) +
-    scale_fill_continuous_diverging(palette = "Berlin", limits = enrichment_limits) +
-    theme_void() +
-    geom_hline(yintercept = 0, color = "darkred", linewidth = 0.5) +
-    theme(
-      legend.position = "none",
-      panel.background = element_rect(fill = "transparent", color = NA),
-      plot.background = element_rect(fill = "transparent", color = NA),
-      plot.margin = unit(c(0, 0, 0, 0), "pt")
-    )
+  
+  if(lollipop_plot == T) {
+    p_plot <- {if(!is.null(lollipop_colors)) ggplot(df, aes(color = Condition)) else ggplot(df, aes(color = Enrichment))} +
+      geom_hline(yintercept = 0, color = "darkred", linewidth = 2*(96/res)) +
+      geom_segment(aes(x = Condition, xend = Condition, y = 0, yend = Enrichment), size = (glyph_size[1]/8/length(conditions))*(96/res)) +
+      geom_point(aes(x = Condition, y = Enrichment), size = (glyph_size[1]/6/length(conditions))*(96/res)) +
+      ylim(enrichment_limits[1]*1.1, enrichment_limits[2]*1.1) +
+      {if (!is.null(lollipop_colors)) {
+        scale_color_manual(values = lollipop_colors) 
+      } else {
+        scale_color_continuous_diverging(palette = "Berlin", limits = enrichment_limits) 
+      }} +
+      theme_void() +
+      theme(
+        legend.position = "none",
+        panel.background = element_rect(fill = "transparent", color = NA),
+        plot.background = element_rect(fill = "transparent", color = NA),
+        plot.margin = unit(c(0, 0, 0, 0), "pt")
+      )
+  } else {
+    # Create the bar plot with transparent background
+    p_plot <- ggplot(df, aes(x = Condition,
+                             y = Enrichment,
+                             fill = Enrichment)) +
+      geom_col(na.rm = TRUE) +
+      scale_x_discrete(expand = expansion(0, 0)) +
+      ylim(enrichment_limits[1], enrichment_limits[2]*1.01) +
+      scale_fill_continuous_diverging(palette = "Berlin", limits = enrichment_limits) +
+      theme_void() +
+      geom_hline(yintercept = 0, color = "darkred", linewidth = 0.5) +
+      theme(
+        legend.position = "none",
+        panel.background = element_rect(fill = "transparent", color = NA),
+        plot.background = element_rect(fill = "transparent", color = NA),
+        plot.margin = unit(c(0, 0, 0, 0), "pt")
+      )
+  }
+
 
   # Render the plot to a temporary file and read it as an image
   img_file <- tempfile(fileext = ".png")
@@ -98,44 +124,82 @@ create_glyph_on_the_fly <- function(pathway,
 #' @param conditions Character vector of conditions to include in the glyph.
 #' @param enrichment_limits Numeric vector of length 2 specifying the enrichment limits.
 #' @param reference Optional string describing which conditions should be used as a reference.
+#' @param lollipop_plot Bool specifying whether we should create lollipop plots (\code{TRUE}) or not (\code{FALSE}). Lollipop plots make large numbers of comparisons easier to compare than barplots, especially when combined with lollipop_colors, with a slight loss in enrichment strength fidelity.
+#' @param lollipop_colors Optional named list, specifies the colors of conditions in the lollipop plot. Names must match condititions exactly
 #' @return A ggplot object representing the enrichment legend.
 #' @export
 generate_legend_plot <- function(conditions,
                                  enrichment_limits,
-                                 reference = NULL) {
+                                 reference = NULL,
+                                 lollipop_plot = T,
+                                 lollipop_colors = NULL) {
   legend_df <- data.frame(
     Condition = factor(conditions, levels = conditions),
     Enrichment = seq(enrichment_limits[1],
                      enrichment_limits[2],
                      length.out = length(conditions))
   )
-
-  legend_plot <- ggplot(legend_df, aes(x = Condition,
-                                       y = Enrichment,
-                                       fill = Enrichment)) +
-    geom_bar(stat = "identity") +
-    geom_hline(yintercept = 0, color = "darkred", linewidth = 0.5) +
-    scale_x_discrete(expand = expansion(0, 0)) +
-    scale_fill_continuous_diverging(
-      palette = "Berlin",
-      limits = enrichment_limits,
-      name = "Enrichment"
-    ) +
-    ylab(ifelse(is.null(reference) || reference == "None",
-                "Enrichment Score",
-                paste0("Enrichment Score\nRelative to\n", reference))) +
-    ggtitle("Legend") +
-    theme_minimal(base_size = 9) +
-    theme(
-      axis.text.x = element_text(angle = 45, size = 10, hjust = 1, face = "bold"),
-      axis.title.x = element_blank(),
-      axis.title.y = element_text(size = 10, face = "bold"),
-      plot.title = element_text(size = 10, face = "bold", hjust = 0.5),
-      axis.ticks = element_blank(),
-      panel.grid = element_blank(),
-      legend.position = "none",
-      plot.margin = unit(c(5, 5, 5, 5), "pt")
-    )
+  
+  if (lollipop_plot) {
+    legend_plot <- {if(!is.null(lollipop_colors)) ggplot(legend_df, aes(color = Condition)) else ggplot(legend_df, aes(color = Enrichment))} +
+      geom_hline(yintercept = 0, color = "darkred", linewidth = 2) +
+      geom_segment(aes(x = Condition, xend = Condition, y = 0, yend = Enrichment), size = 10/length(conditions)) +
+      geom_point(aes(x = Condition, y = Enrichment), size = 15/length(conditions)) +
+      scale_x_discrete(expand = expansion(0.1, 0.2)) +
+      scale_y_discrete(expand = expansion(0.1, 0.2)) +
+      {if (!is.null(lollipop_colors)) {
+        scale_color_manual(values = lollipop_colors,
+                           name = "Condition") 
+      } else {
+        scale_color_continuous_diverging(
+          palette = "Berlin",
+          limits = enrichment_limits,
+          name = "Enrichment"
+        ) 
+      }} +
+      ylab(ifelse(is.null(reference) || reference == "None",
+                  "Enrichment Score",
+                  paste0("Enrichment Score\nRelative to\n", reference))) +
+      ggtitle("Legend") +
+      theme_minimal(base_size = 9) +
+      theme(
+        axis.text.x = element_text(angle = 45, size = 10, hjust = 1, face = "bold"),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 10, face = "bold"),
+        plot.title = element_text(size = 10, face = "bold", hjust = 0.5),
+        axis.ticks = element_blank(),
+        panel.grid = element_blank(),
+        legend.position = "none",
+        plot.margin = unit(c(5, 5, 5, 5), "pt")
+      )
+  } else {
+    legend_plot <- ggplot(legend_df, aes(x = Condition,
+                                         y = Enrichment,
+                                         fill = Enrichment)) +
+      geom_bar(stat = "identity") +
+      geom_hline(yintercept = 0, color = "darkred", linewidth = 0.5) +
+      scale_x_discrete(expand = expansion(0, 0)) +
+      scale_fill_continuous_diverging(
+        palette = "Berlin",
+        limits = enrichment_limits,
+        name = "Enrichment"
+      ) +
+      ylab(ifelse(is.null(reference) || reference == "None",
+                  "Enrichment Score",
+                  paste0("Enrichment Score\nRelative to\n", reference))) +
+      ggtitle("Legend") +
+      theme_minimal(base_size = 9) +
+      theme(
+        axis.text.x = element_text(angle = 45, size = 10, hjust = 1, face = "bold"),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 10, face = "bold"),
+        plot.title = element_text(size = 10, face = "bold", hjust = 0.5),
+        axis.ticks = element_blank(),
+        panel.grid = element_blank(),
+        legend.position = "none",
+        plot.margin = unit(c(5, 5, 5, 5), "pt")
+      )
+  }
 
   return(legend_plot)
 }
@@ -226,7 +290,8 @@ generate_relation_legend <- function(relations_present,
 #' @param cache_dir Character string specifying the directory to store cached glyphs. Default is \code{"glyph_cache"}.
 #' @param progress Optional Shiny progress object for updating progress bars.
 #' @param force_regenerate Logical indicating whether to force regeneration of glyph images, ignoring the cache. Default is \code{FALSE}.
-#'
+#' @param lollipop_plot Bool specifying whether we should create lollipop plots (\code{TRUE}) or not (\code{FALSE}). Lollipop plots make large numbers of comparisons easier to compare than barplots, especially when combined with lollipop_colors, with a slight loss in enrichment strength fidelity.
+#' @param lollipop_colors Optional named list, specifies the colors of conditions in the lollipop plot. Names must match condititions exactly
 #' @return A named list where each name corresponds to a pathway and contains the base64-encoded image URI.
 #' @export
 generate_glyph_images_cached <- function(
@@ -240,7 +305,9 @@ generate_glyph_images_cached <- function(
   res = 96,
   cache_dir = file.path(tempdir(), "glyph_cache"),
   progress = NULL,
-  force_regenerate = FALSE
+  force_regenerate = FALSE,
+  lollipop_plot = T,
+  lollipop_colors = NULL
 ) {
   # Initialize a list to store image URIs
   glyph_images <- list()
@@ -313,7 +380,9 @@ generate_glyph_images_cached <- function(
           enrichment_scores = enrichment_scores,
           enrichment_limits = enrichment_limits,
           glyph_size = glyph_size,
-          res = res
+          res = res,
+          lollipop_plot = lollipop_plot,
+          lollipop_colors = lollipop_colors
         )[[1]]
       }, error = function(e) {
         warning(paste("Error creating glyph for pathway:", pathway, "-", e$message))

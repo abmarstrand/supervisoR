@@ -71,7 +71,8 @@ p1 <- plot_subgraph(
   layout = "kk",
   hide_nodes_without_enrichment = TRUE,
   enrichment_limits = NULL,
-  use_node_label = TRUE
+  use_node_label = TRUE,
+  glyph_size = c(200, 160)
 )
 
 print(p1)
@@ -171,6 +172,32 @@ p5 <- plot_subgraph(
 print(p5)
 ```
 
+## Plotting the subgraph with a lollipop plot, enabling easy distinction of many conditions
+
+Lollipop plots enable easier distinction of different conditions, enabling us to provide individual colors to conditions while retaining some information about direction of regulation. Some regulation strength fidelity is lost.
+
+```{r}
+p6 <- plot_subgraph(
+  parent_geneset_name = "Metabolism Of Lipids",
+  enrichment_scores = enrichment_scores,
+  conditions = conditions,
+  pathway_column = NULL, # WE SET THIS TO NULL SINCE WE HAVE THE PATHWAYS AS ROWNAMES. OTHERWISE, SPECIFY THE COLUMN BY EITHER INDEX OR NAME
+  database = database,
+  species = species,
+  layout = "fr",
+  hide_nodes_without_enrichment = TRUE,
+  enrichment_limits = NULL,
+  use_node_label = TRUE,
+  repel = TRUE,
+  max_depth = 1,
+  lollipop_plot = T,
+  lollipop_colors = c("Condition.1" = "#CC6677", "Condition.2" = "#332288",
+                      "Condition.3" = "#44AA99", "Condition.4" = "#999933")
+)
+
+print(p6)
+```
+
 
 ## Using a shiny app to explore the full pathway set.
 
@@ -193,6 +220,33 @@ run_pathway_shiny_app(enrichment_scores,
     randomSeed = 42,
     options = NULL
   )
+)
+```
+
+## Using a shiny app to explore the full pathway set. This time with lollipop plots
+
+If you don't know where to start, a shiny app is available to explore the pathway set interactively. This includes most of the options found in the static plots.
+
+```{r, out.width = "200%"}
+run_pathway_shiny_app(enrichment_scores,
+  conditions,
+  pathway_column = NULL, # WE SET THIS TO NULL SINCE WE HAVE THE PATHWAYS AS ROWNAMES. OTHERWISE, SPECIFY THE COLUMN BY EITHER INDEX OR NAME
+  database = database,
+  species = species,
+  enrichment_limits = NULL,
+  glyph_size = c(80, 60),
+  res = 96,
+  layout_options_plot = list(
+    layout = "layout_with_kk",
+    physics = FALSE,
+    smooth = FALSE,
+    type = "full",
+    randomSeed = 42,
+    options = NULL
+  ),
+  lollipop_plot = T,
+  lollipop_colors = c("Condition.1" = "#CC6677", "Condition.2" = "#332288",
+                      "Condition.3" = "#44AA99", "Condition.4" = "#999933")
 )
 ```
 

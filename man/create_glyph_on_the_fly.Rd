@@ -10,7 +10,9 @@ create_glyph_on_the_fly(
   enrichment_scores,
   enrichment_limits,
   glyph_size = c(80, 60),
-  res = 96
+  res = 96,
+  lollipop_plot = T,
+  lollipop_colors = NULL
 )
 }
 \arguments{
@@ -25,6 +27,10 @@ create_glyph_on_the_fly(
 \item{glyph_size}{Numeric vector specifying the width and height of the glyph in pixels. Default is \code{c(80, 60)}.}
 
 \item{res}{Numeric value specifying the resolution of the image in dpi. Default is 96.}
+
+\item{lollipop_plot}{Bool specifying whether we should create lollipop plots (\code{TRUE}) or not (\code{FALSE}). Lollipop plots make large numbers of comparisons easier to compare than barplots, especially when combined with lollipop_colors, with a slight loss in enrichment strength fidelity.}
+
+\item{lollipop_colors}{Optional named list, specifies the colors of conditions in the lollipop plot. Names must match condititions exactly}
 }
 \value{
 A magick image representing the glyph for the pathway as well as the local path to the image.

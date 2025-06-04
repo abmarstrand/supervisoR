@@ -15,7 +15,9 @@ generate_glyph_images_cached(
   res = 96,
   cache_dir = file.path(tempdir(), "glyph_cache"),
   progress = NULL,
-  force_regenerate = FALSE
+  force_regenerate = FALSE,
+  lollipop_plot = T,
+  lollipop_colors = NULL
 )
 }
 \arguments{
@@ -40,6 +42,10 @@ generate_glyph_images_cached(
 \item{progress}{Optional Shiny progress object for updating progress bars.}
 
 \item{force_regenerate}{Logical indicating whether to force regeneration of glyph images, ignoring the cache. Default is \code{FALSE}.}
+
+\item{lollipop_plot}{Bool specifying whether we should create lollipop plots (\code{TRUE}) or not (\code{FALSE}). Lollipop plots make large numbers of comparisons easier to compare than barplots, especially when combined with lollipop_colors, with a slight loss in enrichment strength fidelity.}
+
+\item{lollipop_colors}{Optional named list, specifies the colors of conditions in the lollipop plot. Names must match condititions exactly}
 }
 \value{
 A named list where each name corresponds to a pathway and contains the base64-encoded image URI.

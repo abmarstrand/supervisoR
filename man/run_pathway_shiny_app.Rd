@@ -16,6 +16,8 @@ run_pathway_shiny_app(
   enrichment_limits = NULL,
   glyph_size = c(80, 60),
   res = 96,
+  lollipop_plot = F,
+  lollipop_colors = NULL,
   cache_dir = file.path(tempdir(), "glyph_cache"),
   hide_nodes_without_enrichment = T,
   layout_options_plot = list(layout = "layout_with_dh", physics = FALSE, smooth = TRUE,
@@ -50,6 +52,10 @@ pixels. Default is c(80, 60).}
 
 \item{res}{Optional numeric value specifying the resolution of glyph images in DPI.
 Default is 96.}
+
+\item{lollipop_plot}{Bool specifying whether we should create lollipop plots (\code{TRUE}) or not (\code{FALSE}). Lollipop plots make large numbers of comparisons easier to compare than barplots, especially when combined with lollipop_colors, with a slight loss in enrichment strength fidelity.}
+
+\item{lollipop_colors}{Optional named list, specifies the colors of conditions in the lollipop plot. Names must match condititions exactly}
 
 \item{cache_dir}{Optional character string specifying the directory to store cached glyphs.
 Default is "glyph_cache".}

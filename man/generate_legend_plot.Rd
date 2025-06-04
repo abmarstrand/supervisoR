@@ -4,7 +4,13 @@
 \alias{generate_legend_plot}
 \title{Create an Enrichment Score Legend}
 \usage{
-generate_legend_plot(conditions, enrichment_limits, reference = NULL)
+generate_legend_plot(
+  conditions,
+  enrichment_limits,
+  reference = NULL,
+  lollipop_plot = T,
+  lollipop_colors = NULL
+)
 }
 \arguments{
 \item{conditions}{Character vector of conditions to include in the glyph.}
@@ -12,6 +18,10 @@ generate_legend_plot(conditions, enrichment_limits, reference = NULL)
 \item{enrichment_limits}{Numeric vector of length 2 specifying the enrichment limits.}
 
 \item{reference}{Optional string describing which conditions should be used as a reference.}
+
+\item{lollipop_plot}{Bool specifying whether we should create lollipop plots (\code{TRUE}) or not (\code{FALSE}). Lollipop plots make large numbers of comparisons easier to compare than barplots, especially when combined with lollipop_colors, with a slight loss in enrichment strength fidelity.}
+
+\item{lollipop_colors}{Optional named list, specifies the colors of conditions in the lollipop plot. Names must match condititions exactly}
 }
 \value{
 A ggplot object representing the enrichment legend.

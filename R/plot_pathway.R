@@ -38,7 +38,10 @@
 #' @param label_wrap_width Integer specifying the maximum number of characters in each line of the label. Default is 40.
 #' @param edge_arrows Logical, whether to display edges as arrows pointing from parents to children. Default is \code{TRUE}.
 #' @param repel_labels Logical, whether to repel labels to avoid overlaps. Default is \code{FALSE}. If you have a very large graph it is reccommended to try this out.
+#' @param node_label_size Numerical, specifying the size of the node labels.
 #' @param max_depth Integer, specifying the maximal depth shown at one time on the graph. Defaults to \code{NULL}. If you have a very large graph it is reccommended to try this out.
+#' @param lollipop_plot Bool specifying whether we should create lollipop plots (\code{TRUE}) or not (\code{FALSE}). Lollipop plots make large numbers of comparisons easier to compare than barplots, especially when combined with lollipop_colors, with a slight loss in enrichment strength fidelity.
+#' @param lollipop_colors Optional named list, specifies the colors of conditions in the lollipop plot. Names must match condititions exactly
 #' @return A ggplot object representing the subgraph.
 #' @export
 plot_subgraph <- function(parent_geneset_name, enrichment_scores = NULL, conditions = NULL,
@@ -51,7 +54,8 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores = NULL, conditi
                           edge_percentage_labels = FALSE, glyph_size = c(80, 60),
                           res = 96, legend_position = NULL,
                           label_wrap_width = 40, edge_arrows = TRUE,
-                          repel_labels = FALSE, max_depth = NULL) {
+                          repel_labels = FALSE, node_label_size = 1, max_depth = NULL,
+                          lollipop_plot = F, lollipop_colors = NULL) {
   
   # If either mapping, g or gene_sets is not provided use the default data provided with the package
   if(is.null(mapping) | is.null(g) | is.null(gene_sets)) {
@@ -197,7 +201,9 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores = NULL, conditi
         enrichment_scores = pathway_scores,
         enrichment_limits = enrichment_limits,
         glyph_size = glyph_size,
-        res = res
+        res = res,
+        lollipop_plot = lollipop_plot,
+        lollipop_colors = lollipop_colors
       )
       if (!is.null(img)) img[[2]] else NA
     })
@@ -304,7 +310,8 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores = NULL, conditi
       p <- p + geom_label_repel(
         data = non_ellipsis_data,
         aes(x = x, y = y, label = wrapped_label),
-        size = 3,
+        size = 3*node_label_size,
+        label.size = 0.2,
         box.padding = unit(0.5, "lines"),
         point.padding = unit(0.5, "lines"),
         force = 2
@@ -317,7 +324,7 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores = NULL, conditi
         p <- p + geom_label(
           data = non_ellipsis_data,
           aes(x = x, y = y, label = wrapped_label),
-          size = 3,
+          size = 3*node_label_size,
           vjust = 1,
           nudge_y = nudge_y,
           label.padding = unit(0.1, "lines"),
@@ -328,7 +335,7 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores = NULL, conditi
         p <- p + geom_label(
           data = non_ellipsis_data,
           aes(x = x, y = y, label = wrapped_label),
-          size = 3,
+          size = 3*node_label_size,
           vjust = 1,
           nudge_y = nudge_y,
           label.padding = unit(0.1, "lines"),
@@ -369,7 +376,9 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores = NULL, conditi
     legend_plot <- generate_legend_plot(
       conditions = conditions,
       enrichment_limits = enrichment_limits,
-      reference = reference
+      reference = reference,
+      lollipop_plot = lollipop_plot,
+      lollipop_colors = lollipop_colors
     )
     if ("relation" %in% names(edge_attr(sub_g))) {
       relations <- unique(E(sub_g)$relation)
