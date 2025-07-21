@@ -18,7 +18,7 @@
 #' @param parent_geneset_name Name of the parent geneset. This is used to extract the subgraph of interest.
 #' @param enrichment_scores Dataframe of enrichment scores (rows are pathways, columns are conditions).
 #' @param conditions Character vector of conditions to include in the glyphs.
-#' @param significance_scores Optional dataframe of significance scores (e.g. p-values, FDR). Must be formatted like enrichment_scores, with pathway names in same location. Changes the shape of points in the lollipop plot to indicate significance.
+#' @param significance_scores Optional dataframe of significance scores (e.g. p-values, FDR). Must be formatted like enrichment_scores, with pathway names in same location. Changes the shape of points in the lollipop plot to indicate significance (diamond).
 #' @param pathway_column Character, integer or NULL. Name/index of the column which contains the pathway names in the enrichment score dataframe. Defaults to \code{1L} If set to NULL, it will use the rownames to identify the pathway for each row. 
 #' @param species String describing which species to use. Currently supports "Homo sapiens" or "Mus musculus". Ignored if mapping, g and gene_sets are provided.
 #' @param database String describing which database to use. Currently supports "reactome" and "GO", which are the MsigDB versions of the full REACTOME database and the GOBP terms. Ignored if mapping, g and gene_sets are provided.

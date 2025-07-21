@@ -35,8 +35,8 @@ load_default_data <- function(database = "reactome",
   # Load msigdbr data
   msigdb_init <- msigdbr(
     species = species,
-    category = db_params$category,
-    subcategory = db_params$subcategory) %>%
+    collection = db_params$category,
+    subcollection = db_params$subcategory) %>%
     select(gs_name, gs_exact_source, gene_symbol) %>%
     distinct() %>%
     rename(name = gs_name, exact_source = gs_exact_source)

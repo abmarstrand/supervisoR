@@ -8,6 +8,7 @@ plot_subgraph(
   parent_geneset_name,
   enrichment_scores = NULL,
   conditions = NULL,
+  significance_scores = NULL,
   pathway_column = 1L,
   species = "Homo sapiens",
   database = "reactome",
@@ -31,7 +32,9 @@ plot_subgraph(
   node_label_size = 1,
   max_depth = NULL,
   lollipop_plot = F,
-  lollipop_colors = NULL
+  lollipop_colors = NULL,
+  lollipop_significance = F,
+  significance_cutoff = 0.05
 )
 }
 \arguments{
@@ -40,6 +43,8 @@ plot_subgraph(
 \item{enrichment_scores}{Dataframe of enrichment scores (rows are pathways, columns are conditions).}
 
 \item{conditions}{Character vector of conditions to include in the glyphs.}
+
+\item{significance_scores}{Optional dataframe of significance scores (e.g. p-values, FDR). Must be formatted like enrichment_scores, with pathway names in same location. Changes the shape of points in the lollipop plot to indicate significance (diamond).}
 
 \item{pathway_column}{Character, integer or NULL. Name/index of the column which contains the pathway names in the enrichment score dataframe. Defaults to \code{1L} If set to NULL, it will use the rownames to identify the pathway for each row.}
 
@@ -88,6 +93,10 @@ plot_subgraph(
 \item{lollipop_plot}{Bool specifying whether we should create lollipop plots (\code{TRUE}) or not (\code{FALSE}). Lollipop plots make large numbers of comparisons easier to compare than barplots, especially when combined with lollipop_colors, with a slight loss in enrichment strength fidelity.}
 
 \item{lollipop_colors}{Optional named list, specifies the colors of conditions in the lollipop plot. Names must match conditions exactly}
+
+\item{lollipop_significance}{Bool specifying whether significance should be indicated on lollipop plots. Requires significance scores to be provided. Shape for significance is a star.}
+
+\item{significance_cutoff}{Optional integer specifying the cutoff for showing significance in the lollipop plot. Defaults to 0.05.}
 }
 \value{
 A ggplot object representing the subgraph.

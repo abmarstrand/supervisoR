@@ -14,10 +14,13 @@
 #' @param conditions Character vector of conditions to include in the glyph.
 #' @param enrichment_scores Data frame of enrichment scores (rows are pathways, columns are conditions).
 #' @param enrichment_limits Numeric vector of length 2 specifying the enrichment limits.
+#' @param significance_scores Optional dataframe of significance scores (e.g. p-values, FDR). Must be formatted like enrichment_scores, with pathway names in same location. Changes the shape of points in the lollipop plot to indicate significance (diamond).
 #' @param glyph_size Numeric vector specifying the width and height of the glyph in pixels. Default is \code{c(80, 60)}.
 #' @param res Numeric value specifying the resolution of the image in dpi. Default is 96.
 #' @param lollipop_plot Bool specifying whether we should create lollipop plots (\code{TRUE}) or not (\code{FALSE}). Lollipop plots make large numbers of comparisons easier to compare than barplots, especially when combined with lollipop_colors, with a slight loss in enrichment strength fidelity.
 #' @param lollipop_colors Optional named list, specifies the colors of conditions in the lollipop plot. Names must match condititions exactly
+#' @param lollipop_significance Bool specifying whether significance should be indicated on lollipop plots. Requires significance scores to be provided. Shape for significance is a star. 
+#' @param significance_cutoff Optional integer specifying the cutoff for showing significance in the lollipop plot. Defaults to 0.05.
 #' @return A magick image representing the glyph for the pathway as well as the local path to the image.
 #' @examples
 #' # Example usage:
