@@ -18,9 +18,10 @@
 #' @param parent_geneset_name Name of the parent geneset. This is used to extract the subgraph of interest.
 #' @param enrichment_scores Dataframe of enrichment scores (rows are pathways, columns are conditions).
 #' @param conditions Character vector of conditions to include in the glyphs.
+#' @param significance_scores Optional dataframe of significance scores (e.g. p-values, FDR). Must be formatted like enrichment_scores, with pathway names in same location. Changes the shape of points in the lollipop plot to indicate significance.
 #' @param pathway_column Character, integer or NULL. Name/index of the column which contains the pathway names in the enrichment score dataframe. Defaults to \code{1L} If set to NULL, it will use the rownames to identify the pathway for each row. 
 #' @param species String describing which species to use. Currently supports "Homo sapiens" or "Mus musculus". Ignored if mapping, g and gene_sets are provided.
-#' @param database String describing which database to use. Currently supports "reactome" and "GO, which are the MsigDB versions of the full REACTOME database and the GOBP terms. Ignored if mapping, g and gene_sets are provided.
+#' @param database String describing which database to use. Currently supports "reactome" and "GO", which are the MsigDB versions of the full REACTOME database and the GOBP terms. Ignored if mapping, g and gene_sets are provided.
 #' @param mapping Optional data frame containing mapping information used for translating between pathway IDs and names. Must have two columns called processed_name and exact_source containing the names and IDs respectively. See load_and_preprocess_gene_sets() for details on how to generate this.
 #' @param g Optional igraph object containing the network graph. Can be generated from a dataframe containing inter-pathway relations. See load_and_preprocess_gene_sets() for details on how to generate this.
 #' @param gene_sets Optional list of named lists containing the genes found in the used pathways. Used for pathway overlap adjustments, see adjust_edge_thickness and edge_percentage_labels. 
@@ -34,17 +35,19 @@
 #' @param edge_percentage_labels Logical, whether to add edge percentage labels. Default is \code{FALSE}.
 #' @param glyph_size Numeric vector specifying the width and height of the glyphs in pixels. Default is \code{c(80, 60)}.
 #' @param res Numeric value specifying the resolution of the glyph images in dpi. Default is 96.
-#' @param legend_position Optional character string ("topright", "topleft", "bottomleft" or "bottomright") determining final legend position.
+#' @param legend_position Optional character string ("topright", "topleft", "bottomleft", "bottomright", "none") determining final legend position. If not provided, the function will try to determine an optimal position.
 #' @param label_wrap_width Integer specifying the maximum number of characters in each line of the label. Default is 40.
 #' @param edge_arrows Logical, whether to display edges as arrows pointing from parents to children. Default is \code{TRUE}.
-#' @param repel_labels Logical, whether to repel labels to avoid overlaps. Default is \code{FALSE}. If you have a very large graph it is reccommended to try this out.
+#' @param repel_labels Logical, whether to repel labels to avoid overlaps. Default is \code{FALSE}. If you have a very large graph it is recommended to try this out.
 #' @param node_label_size Numerical, specifying the size of the node labels.
-#' @param max_depth Integer, specifying the maximal depth shown at one time on the graph. Defaults to \code{NULL}. If you have a very large graph it is reccommended to try this out.
+#' @param max_depth Integer, specifying the maximal depth shown at one time on the graph. Defaults to \code{NULL}. If you have a very large graph it is recommended to try this out.
 #' @param lollipop_plot Bool specifying whether we should create lollipop plots (\code{TRUE}) or not (\code{FALSE}). Lollipop plots make large numbers of comparisons easier to compare than barplots, especially when combined with lollipop_colors, with a slight loss in enrichment strength fidelity.
-#' @param lollipop_colors Optional named list, specifies the colors of conditions in the lollipop plot. Names must match condititions exactly
+#' @param lollipop_colors Optional named list, specifies the colors of conditions in the lollipop plot. Names must match conditions exactly
+#' @param lollipop_significance Bool specifying whether significance should be indicated on lollipop plots. Requires significance scores to be provided. Shape for significance is a star. 
+#' @param significance_cutoff Optional integer specifying the cutoff for showing significance in the lollipop plot. Defaults to 0.05.
 #' @return A ggplot object representing the subgraph.
 #' @export
-plot_subgraph <- function(parent_geneset_name, enrichment_scores = NULL, conditions = NULL,
+plot_subgraph <- function(parent_geneset_name, enrichment_scores = NULL, conditions = NULL, significance_scores = NULL,
                           pathway_column = 1L, species ="Homo sapiens", database = "reactome",
                           mapping = NULL, g = NULL, gene_sets = NULL,
                           layout = "kk", circular = FALSE,
@@ -55,7 +58,8 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores = NULL, conditi
                           res = 96, legend_position = NULL,
                           label_wrap_width = 40, edge_arrows = TRUE,
                           repel_labels = FALSE, node_label_size = 1, max_depth = NULL,
-                          lollipop_plot = F, lollipop_colors = NULL) {
+                          lollipop_plot = F, lollipop_colors = NULL, lollipop_significance = F,
+                          significance_cutoff = 0.05) {
   
   # If either mapping, g or gene_sets is not provided use the default data provided with the package
   if(is.null(mapping) | is.null(g) | is.null(gene_sets)) {
@@ -92,6 +96,12 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores = NULL, conditi
     if (is.character(enrichment_scores[,pathway_column])) {
       rownames(enrichment_scores) <- enrichment_scores[,pathway_column]
       enrichment_scores <- enrichment_scores[,-pathway_column, drop = F]
+      if (!is.null(significance_scores) & is.character(enrichment_scores[,pathway_column])) {
+        rownames(significance_scores) <- significance_scores[,pathway_column]
+        significance_scores <- significance_scores[,-pathway_column, drop = F]
+      } else {
+        stop("Pathway column in significance_scores does not contain characters. Check whether you have selected to correct column containing pathway names and whether it is the same in significance_scores and enrichment_scores")
+      }
     } else {
       stop("Pathway column does not contain characters. Check whether you have selected to correct column containing pathway names")
     }
@@ -195,15 +205,23 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores = NULL, conditi
     glyphs <- lapply(V(sub_g)$label, function(pathway) {
       if (pathway == "...") return(NA)
       pathway_scores <- enrichment_scores[pathway, conditions, drop = FALSE]
+      if (!is.null(significance_scores)) {
+        pathway_significance <- significance_scores[pathway, conditions, drop = FALSE]
+      } else {
+        pathway_significance <- NULL
+      }
       img <- create_glyph_on_the_fly(
         pathway = pathway,
         conditions = conditions,
         enrichment_scores = pathway_scores,
         enrichment_limits = enrichment_limits,
+        significance_scores = pathway_significance,
         glyph_size = glyph_size,
         res = res,
         lollipop_plot = lollipop_plot,
-        lollipop_colors = lollipop_colors
+        lollipop_colors = lollipop_colors,
+        lollipop_significance = lollipop_significance,
+        significance_cutoff = significance_cutoff
       )
       if (!is.null(img)) img[[2]] else NA
     })
@@ -355,11 +373,10 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores = NULL, conditi
   y_max <- max(node_y)
 
   corners <- data.frame(
-    corner = c("topright", "topleft", "bottomleft", "bottomright"),
-    x = c(x_max, x_min, x_min, x_max),
-    y = c(y_max, y_max, y_min, y_min)
+    corner = c("topright", "topleft", "bottomleft", "bottomright", "none"),
+    x = c(x_max, x_min, x_min, x_max, x_max),
+    y = c(y_max, y_max, y_min, y_min, y_max)
   )
-
   if (!is.null(legend_position) && legend_position %in% corners$corner) {
     best_corner <- corners[corners$corner == legend_position, ]
   } else {
@@ -373,47 +390,50 @@ plot_subgraph <- function(parent_geneset_name, enrichment_scores = NULL, conditi
 
   # Create the appropriate legend based on the condition
   if (!single_condition && !is.null(enrichment_scores)) {
-    legend_plot <- generate_legend_plot(
-      conditions = conditions,
-      enrichment_limits = enrichment_limits,
-      reference = reference,
-      lollipop_plot = lollipop_plot,
-      lollipop_colors = lollipop_colors
-    )
-    if ("relation" %in% names(edge_attr(sub_g))) {
-      relations <- unique(E(sub_g)$relation)
-    } else {
-      relations <- character(0)
-    }
-    relations_present <- relations[!is.na(relations)]
-    relations_present <- relations_present[relations_present %in% names(relation_colors)]
-    if (length(relations_present) > 0) {
-      relation_legend <- generate_relation_legend(
-        relations_present = relations_present,
-        relation_colors = relation_colors,
-        relation_linetypes = relation_linetypes,
-        textsize = 3
+      legend_plot <- generate_legend_plot(
+        conditions = conditions,
+        enrichment_limits = enrichment_limits,
+        reference = reference,
+        lollipop_plot = lollipop_plot,
+        lollipop_colors = lollipop_colors
       )
-      # Combine the two legends vertically
-      combined_plot <- plot_grid(legend_plot, relation_legend, ncol = 1, rel_heights = c(3, 1))
-      legend_grob <- ggplotGrob(combined_plot)
-    } else {
-      legend_grob <- ggplotGrob(legend_plot)
+      if ("relation" %in% names(edge_attr(sub_g))) {
+        relations <- unique(E(sub_g)$relation)
+      } else {
+        relations <- character(0)
+      }
+      relations_present <- relations[!is.na(relations)]
+      relations_present <- relations_present[relations_present %in% names(relation_colors)]
+      if (length(relations_present) > 0) {
+        relation_legend <- generate_relation_legend(
+          relations_present = relations_present,
+          relation_colors = relation_colors,
+          relation_linetypes = relation_linetypes,
+          textsize = 3
+        )
+        # Combine the two legends vertically
+        combined_plot <- plot_grid(legend_plot, relation_legend, ncol = 1, rel_heights = c(3, 1))
+        legend_grob <- ggplotGrob(combined_plot)
+      } else {
+        legend_grob <- ggplotGrob(legend_plot)
+      }
+      legend_coords <- switch(best_corner$corner,
+                              "topleft" = list(x = 0.05, y = 0.75),
+                              "topright" = list(x = 0.75, y = 0.75),
+                              "bottomleft" = list(x = 0.05, y = 0.05),
+                              "bottomright" = list(x = 0.75, y = 0.05),
+                              "none" = list(x = NA, y = NA),
+                              list(x = 0.75, y = 0.05))
+      if (!best_corner$corner == "none") {
+              p <- ggdraw(p) +
+        draw_grob(
+          legend_grob,
+          x = legend_coords$x,
+          y = legend_coords$y,
+          width = 0.2,
+          height = 0.2
+        )
+      }
     }
-    legend_coords <- switch(best_corner$corner,
-                            "topleft" = list(x = 0.05, y = 0.75),
-                            "topright" = list(x = 0.75, y = 0.75),
-                            "bottomleft" = list(x = 0.05, y = 0.05),
-                            "bottomright" = list(x = 0.75, y = 0.05),
-                            list(x = 0.75, y = 0.05))
-    p <- ggdraw(p) +
-      draw_grob(
-        legend_grob,
-        x = legend_coords$x,
-        y = legend_coords$y,
-        width = 0.2,
-        height = 0.2
-      )
-  }
   return(p)
 }

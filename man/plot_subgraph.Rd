@@ -45,7 +45,7 @@ plot_subgraph(
 
 \item{species}{String describing which species to use. Currently supports "Homo sapiens" or "Mus musculus". Ignored if mapping, g and gene_sets are provided.}
 
-\item{database}{String describing which database to use. Currently supports "reactome" and "GO, which are the MsigDB versions of the full REACTOME database and the GOBP terms. Ignored if mapping, g and gene_sets are provided.}
+\item{database}{String describing which database to use. Currently supports "reactome" and "GO", which are the MsigDB versions of the full REACTOME database and the GOBP terms. Ignored if mapping, g and gene_sets are provided.}
 
 \item{mapping}{Optional data frame containing mapping information used for translating between pathway IDs and names. Must have two columns called processed_name and exact_source containing the names and IDs respectively. See load_and_preprocess_gene_sets() for details on how to generate this.}
 
@@ -73,21 +73,21 @@ plot_subgraph(
 
 \item{res}{Numeric value specifying the resolution of the glyph images in dpi. Default is 96.}
 
-\item{legend_position}{Optional character string ("topright", "topleft", "bottomleft" or "bottomright") determining final legend position.}
+\item{legend_position}{Optional character string ("topright", "topleft", "bottomleft", "bottomright", "none") determining final legend position. If not provided, the function will try to determine an optimal position.}
 
 \item{label_wrap_width}{Integer specifying the maximum number of characters in each line of the label. Default is 40.}
 
 \item{edge_arrows}{Logical, whether to display edges as arrows pointing from parents to children. Default is \code{TRUE}.}
 
-\item{repel_labels}{Logical, whether to repel labels to avoid overlaps. Default is \code{FALSE}. If you have a very large graph it is reccommended to try this out.}
+\item{repel_labels}{Logical, whether to repel labels to avoid overlaps. Default is \code{FALSE}. If you have a very large graph it is recommended to try this out.}
 
 \item{node_label_size}{Numerical, specifying the size of the node labels.}
 
-\item{max_depth}{Integer, specifying the maximal depth shown at one time on the graph. Defaults to \code{NULL}. If you have a very large graph it is reccommended to try this out.}
+\item{max_depth}{Integer, specifying the maximal depth shown at one time on the graph. Defaults to \code{NULL}. If you have a very large graph it is recommended to try this out.}
 
 \item{lollipop_plot}{Bool specifying whether we should create lollipop plots (\code{TRUE}) or not (\code{FALSE}). Lollipop plots make large numbers of comparisons easier to compare than barplots, especially when combined with lollipop_colors, with a slight loss in enrichment strength fidelity.}
 
-\item{lollipop_colors}{Optional named list, specifies the colors of conditions in the lollipop plot. Names must match condititions exactly}
+\item{lollipop_colors}{Optional named list, specifies the colors of conditions in the lollipop plot. Names must match conditions exactly}
 }
 \value{
 A ggplot object representing the subgraph.

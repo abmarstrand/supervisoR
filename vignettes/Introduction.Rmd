@@ -198,6 +198,39 @@ p6 <- plot_subgraph(
 print(p6)
 ```
 
+## Plotting a subgraph with a lollipop plot, including significances
+
+By changing the shape of the points in the lollipop plot, we can also plot whether a given pathway is significance in a given condition. Here, we provide random p-values. The p-value dataframe must be formatted in the same way as the enrichment score dataframe, including where pathway names are located. The cutoff for significance can be changed, but defaults to 0.05.
+```{r}
+significance_scores <- data.frame(Condition.1 = sample(seq(0,1,by = 0.0001),length(default_data$gene_sets)),
+                                Condition.2 = sample(seq(0,1,by = 0.0001),length(default_data$gene_sets)),
+                                Condition.3 = sample(seq(0,1,by = 0.0001),length(default_data$gene_sets)),
+                                Condition.4 = sample(seq(0,1,by = 0.0001),length(default_data$gene_sets)))
+rownames(significance_scores) <- names(default_data$gene_sets)
+
+p7 <- plot_subgraph(
+  parent_geneset_name = "Metabolism Of Lipids",
+  enrichment_scores = enrichment_scores,
+  conditions = conditions,
+  significance_scores = significance_scores,
+  pathway_column = NULL, # WE SET THIS TO NULL SINCE WE HAVE THE PATHWAYS AS ROWNAMES. OTHERWISE, SPECIFY THE COLUMN BY EITHER INDEX OR NAME
+  database = database,
+  species = species,
+  layout = "fr",
+  hide_nodes_without_enrichment = TRUE,
+  enrichment_limits = NULL,
+  use_node_label = TRUE,
+  repel = TRUE,
+  max_depth = 1,
+  lollipop_plot = T,
+  lollipop_colors = c("Condition.1" = "#CC6677", "Condition.2" = "#332288",
+                      "Condition.3" = "#44AA99", "Condition.4" = "#999933"),
+  lollipop_significance = T
+)
+
+print(p7)
+```
+
 
 ## Using a shiny app to explore the full pathway set.
 
@@ -281,7 +314,7 @@ gene_sets <- preprocessed_data$gene_sets
 mapping <- preprocessed_data$mapping
 g <- preprocessed_data$pathway_graph
 
-p6 <- plot_subgraph(
+p8 <- plot_subgraph(
   parent_geneset_name = parent_name,
   mapping = mapping,
   g = g,
@@ -295,7 +328,7 @@ p6 <- plot_subgraph(
   use_node_label = TRUE
 )
 
-print(p6)
+print(p8)
 
 ```
 

@@ -2,12 +2,14 @@
 #'
 #' Generates a glyph for a single pathway by creating a bar plot of enrichment scores across specified conditions.
 #'
-#' @importFrom ggplot2 ggplot aes geom_bar theme_void scale_x_discrete geom_hline theme element_blank ylim geom_col scale_color_manual geom_point geom_segment scale_y_discrete
+#' @importFrom ggplot2 ggplot aes geom_bar theme_void scale_x_discrete geom_hline theme element_blank ylim geom_col scale_color_manual geom_point geom_segment scale_y_discrete scale_shape_manual scale_fill_manual
 #' @importFrom ragg agg_png
 #' @importFrom magick image_read
 #' @importFrom colorspace scale_fill_continuous_diverging scale_color_continuous_diverging
 #' @importFrom rlang .data
 #' @importFrom grDevices dev.off
+#' @importFrom dplyr mutate_all case_when
+#' @importFrom magrittr %>%
 #' @param pathway Character string representing the pathway name.
 #' @param conditions Character vector of conditions to include in the glyph.
 #' @param enrichment_scores Data frame of enrichment scores (rows are pathways, columns are conditions).
@@ -36,10 +38,13 @@ create_glyph_on_the_fly <- function(pathway,
                                     conditions,
                                     enrichment_scores,
                                     enrichment_limits,
+                                    significance_scores = NULL,
                                     glyph_size = c(80, 60),
                                     res = 96,
                                     lollipop_plot = T,
-                                    lollipop_colors = NULL) {
+                                    lollipop_colors = NULL,
+                                    lollipop_significance = F,
+                                    significance_cutoff = 0.05) {
   # Get enrichment scores for the pathway and specified conditions
   scores_glyph <- enrichment_scores[pathway, conditions, drop = FALSE]
 
@@ -54,17 +59,41 @@ create_glyph_on_the_fly <- function(pathway,
     Enrichment = as.numeric(scores_glyph[1, ]),
     stringsAsFactors = FALSE
   )
+  if (!is.null(significance_scores)) {
+    significance_scores <- significance_scores %>%
+      mutate_all(~ case_when(. > significance_cutoff ~ "NS", T ~ "S"))
+    df["Significance"] <- factor(significance_scores, levels = c("NS", "S"))
+  }
   
   if(lollipop_plot == T) {
     p_plot <- {if(!is.null(lollipop_colors)) ggplot(df, aes(color = Condition)) else ggplot(df, aes(color = Enrichment))} +
       geom_hline(yintercept = 0, color = "darkred", linewidth = 2*(96/res)) +
       geom_segment(aes(x = Condition, xend = Condition, y = 0, yend = Enrichment), size = (glyph_size[1]/8/length(conditions))*(96/res)) +
-      geom_point(aes(x = Condition, y = Enrichment), size = (glyph_size[1]/6/length(conditions))*(96/res)) +
+      {if (!is.null(significance_scores)) {
+        {if(!is.null(lollipop_colors)) {
+            geom_point(aes(x = Condition, y = Enrichment, shape = Significance, fill = Condition),
+                     color = "black",
+                     size = (glyph_size[1]/6/length(conditions))*(96/res))
+          } else {
+            geom_point(aes(x = Condition, y = Enrichment, shape = Significance, fill = Enrichment),
+                       color = "black",
+                       size = (glyph_size[1]/6/length(conditions))*(96/res))
+          }
+        }} else {
+          geom_point(aes(x = Condition, y = Enrichment), size = (glyph_size[1]/6/length(conditions))*(96/res))
+        }
+      } +
       ylim(enrichment_limits[1]*1.1, enrichment_limits[2]*1.1) +
       {if (!is.null(lollipop_colors)) {
-        scale_color_manual(values = lollipop_colors) 
+        scale_color_manual(values = lollipop_colors)
       } else {
         scale_color_continuous_diverging(palette = "Berlin", limits = enrichment_limits) 
+      }} +
+      {if (!is.null(significance_scores)) {
+        scale_shape_manual(values = c(23, 21), breaks = c("S", "NS"))
+      }} +
+      {if (!is.null(significance_scores) && !is.null(lollipop_colors)) {
+        scale_fill_manual(values = lollipop_colors)
       }} +
       theme_void() +
       theme(
