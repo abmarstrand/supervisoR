@@ -1,7 +1,8 @@
 ## supervisoR
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.md)
 [![GitHub release](https://img.shields.io/github/v/release/abmarstrand/supervisoR?display_name=tag)](../../releases)
-[![DOI](https://zenodo.org/badge/891108332.svg)](https://zenodo.org/doi/891108332)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15590859.svg)](https://doi.org/10.5281/zenodo.15590859)
+
 ---
 Visualize gene-set enrichment on **hierarchical pathway and ontology networks** in R — publishable static figures (ggplot2/ggraph) and interactive exploration via Shiny + visNetwork.
 ## Features
@@ -72,7 +73,7 @@ See [Releases](../../releases) for version history and highlights.
 
 If you use *supervisoR* in your work, please cite the Zenodo DOI:
 
-[![DOI](https://zenodo.org/badge/891108332.svg)](https://zenodo.org/doi/891108332)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15590859.svg)](https://doi.org/10.5281/zenodo.15590859)
 
 ---
 
