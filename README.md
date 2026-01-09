@@ -4,9 +4,9 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15590859.svg)](https://doi.org/10.5281/zenodo.15590859)
 
 ---
-Visualize gene-set enrichment on **hierarchical pathway and ontology networks** in R — publishable static figures (ggplot2/ggraph) and interactive exploration via Shiny + visNetwork.
+Visualize gene-set enrichment on **hierarchical pathway and ontology networks** in R - publishable static figures (ggplot2/ggraph) and interactive exploration via Shiny + visNetwork.
 ## Features
-- **Hierarchy-aware plots:** Preserve biological structure by mapping enrichment onto pathway trees/DAGs.
+- **Hierarchy-aware plots:** Preserve biological structure by mapping enrichment onto pathway networks.
 - **Two modes:**  
   - *Static* figures for papers (ggplot2/ggraph)  
   - *Interactive* app for exploration (Shiny/visNetwork)
@@ -41,7 +41,7 @@ These vignettes walk through graph generation and how to run the Shiny app on bo
 ## Inputs & Outputs
 
 **Inputs (conceptual):**
-1. A table of enrichment results per pathway × condition (e.g., Normalized Enrichment Scores from GSEA/fGSEA).
+1. A table of enrichment results per pathway x condition (e.g., Normalized Enrichment Scores from GSEA/fGSEA).
 2. A pathway or ontology hierarchy (node and edge tables) to plot on.
 
 **Outputs:**
