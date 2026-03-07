@@ -12,9 +12,9 @@ create_glyph_on_the_fly(
   significance_scores = NULL,
   glyph_size = c(80, 60),
   res = 96,
-  lollipop_plot = T,
+  lollipop_plot = TRUE,
   lollipop_colors = NULL,
-  lollipop_significance = F,
+  lollipop_significance = FALSE,
   significance_cutoff = 0.05
 )
 }
@@ -27,19 +27,19 @@ create_glyph_on_the_fly(
 
 \item{enrichment_limits}{Numeric vector of length 2 specifying the enrichment limits.}
 
-\item{significance_scores}{Optional dataframe of significance scores (e.g. p-values, FDR). Must be formatted like enrichment_scores, with pathway names in same location. Changes the shape of points in the lollipop plot to indicate significance (diamond).}
+\item{significance_scores}{Optional data frame of significance scores (e.g. p-values). Must match the structure of enrichment_scores.}
 
 \item{glyph_size}{Numeric vector specifying the width and height of the glyph in pixels. Default is \code{c(80, 60)}.}
 
 \item{res}{Numeric value specifying the resolution of the image in dpi. Default is 96.}
 
-\item{lollipop_plot}{Bool specifying whether we should create lollipop plots (\code{TRUE}) or not (\code{FALSE}). Lollipop plots make large numbers of comparisons easier to compare than barplots, especially when combined with lollipop_colors, with a slight loss in enrichment strength fidelity.}
+\item{lollipop_plot}{Logical specifying whether we should create lollipop plots. Default is \code{TRUE}.}
 
-\item{lollipop_colors}{Optional named list, specifies the colors of conditions in the lollipop plot. Names must match condititions exactly}
+\item{lollipop_colors}{Optional named list, specifies the colors of conditions in the lollipop plot.}
 
-\item{lollipop_significance}{Bool specifying whether significance should be indicated on lollipop plots. Requires significance scores to be provided. Shape for significance is a star.}
+\item{lollipop_significance}{Logical specifying whether significance should be indicated. Default is \code{FALSE}.}
 
-\item{significance_cutoff}{Optional integer specifying the cutoff for showing significance in the lollipop plot. Defaults to 0.05.}
+\item{significance_cutoff}{Numeric cutoff for significance. Default is 0.05.}
 }
 \value{
 A magick image representing the glyph for the pathway as well as the local path to the image.

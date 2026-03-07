@@ -5,5 +5,5 @@ utils::globalVariables(c(
   "processed_name", "exact_source",
   "percent_overlap", "image", "label",
   "enrichment_score", "wrapped_label",
-  "Condition", "Enrichment"
+  "Condition", "Enrichment", "Significance"
 ))

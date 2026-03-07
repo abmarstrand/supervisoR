@@ -11,46 +11,54 @@ generate_glyph_images_cached(
   conditions,
   mapping,
   enrichment_limits = NULL,
+  significance_scores = NULL,
   glyph_size = c(80, 60),
   res = 96,
   cache_dir = file.path(tempdir(), "glyph_cache"),
   progress = NULL,
   force_regenerate = FALSE,
-  lollipop_plot = T,
-  lollipop_colors = NULL
+  lollipop_plot = TRUE,
+  lollipop_colors = NULL,
+  lollipop_significance = FALSE,
+  significance_cutoff = 0.05
 )
 }
 \arguments{
-\item{g}{An \code{igraph} object representing the pathway graph.}
+\item{g}{An igraph object representing the pathway graph.}
 
-\item{gene_sets}{A named list where each element corresponds to a pathway and contains the associated genes.}
+\item{gene_sets}{A named list of gene sets.}
 
-\item{enrichment_scores}{A \code{data.frame} with pathways as rows and conditions as columns, containing enrichment scores.}
+\item{enrichment_scores}{A data.frame with pathways as rows and conditions as columns.}
 
 \item{conditions}{A character vector specifying the conditions to visualize.}
 
-\item{mapping}{A \code{data.frame} containing mapping information between pathways and their exact_source IDs.}
+\item{mapping}{A data.frame containing mapping information.}
 
-\item{enrichment_limits}{Optional numeric vector of length two specifying the minimum and maximum enrichment scores for visualization.}
+\item{enrichment_limits}{Optional numeric vector of length two.}
 
-\item{glyph_size}{Optional numeric vector specifying the width and height of glyphs in pixels. Default is \code{c(80, 60)}.}
+\item{significance_scores}{Optional data frame of significance scores.}
 
-\item{res}{Optional numeric value specifying the resolution of glyph images in DPI. Default is 96.}
+\item{glyph_size}{Optional numeric vector for glyph dimensions. Default is c(80, 60).}
 
-\item{cache_dir}{Character string specifying the directory to store cached glyphs. Default is \code{"glyph_cache"}.}
+\item{res}{Optional numeric resolution in DPI. Default is 96.}
 
-\item{progress}{Optional Shiny progress object for updating progress bars.}
+\item{cache_dir}{Character string for cache directory.}
 
-\item{force_regenerate}{Logical indicating whether to force regeneration of glyph images, ignoring the cache. Default is \code{FALSE}.}
+\item{progress}{Optional Shiny progress object.}
 
-\item{lollipop_plot}{Bool specifying whether we should create lollipop plots (\code{TRUE}) or not (\code{FALSE}). Lollipop plots make large numbers of comparisons easier to compare than barplots, especially when combined with lollipop_colors, with a slight loss in enrichment strength fidelity.}
+\item{force_regenerate}{Logical to force regeneration. Default is FALSE.}
 
-\item{lollipop_colors}{Optional named list, specifies the colors of conditions in the lollipop plot. Names must match condititions exactly}
+\item{lollipop_plot}{Logical for lollipop plot style. Default is TRUE.}
+
+\item{lollipop_colors}{Optional named list for condition colors.}
+
+\item{lollipop_significance}{Logical for significance display. Default is FALSE.}
+
+\item{significance_cutoff}{Numeric cutoff. Default is 0.05.}
 }
 \value{
-A named list where each name corresponds to a pathway and contains the base64-encoded image URI.
+A named list of base64-encoded image URIs.
 }
 \description{
-Generates glyph images for each pathway and caches them to improve performance.
-If the enrichment scores and conditions remain unchanged, cached images are used.
+Generate Glyph Images with Caching
 }

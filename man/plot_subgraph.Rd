@@ -31,78 +31,76 @@ plot_subgraph(
   repel_labels = FALSE,
   node_label_size = 1,
   max_depth = NULL,
-  lollipop_plot = F,
+  lollipop_plot = FALSE,
   lollipop_colors = NULL,
-  lollipop_significance = F,
+  lollipop_significance = FALSE,
   significance_cutoff = 0.05
 )
 }
 \arguments{
-\item{parent_geneset_name}{Name of the parent geneset. This is used to extract the subgraph of interest.}
+\item{parent_geneset_name}{Name of the parent geneset.}
 
-\item{enrichment_scores}{Dataframe of enrichment scores (rows are pathways, columns are conditions).}
+\item{enrichment_scores}{Dataframe of enrichment scores.}
 
-\item{conditions}{Character vector of conditions to include in the glyphs.}
+\item{conditions}{Character vector of conditions to include.}
 
-\item{significance_scores}{Optional dataframe of significance scores (e.g. p-values, FDR). Must be formatted like enrichment_scores, with pathway names in same location. Changes the shape of points in the lollipop plot to indicate significance (diamond).}
+\item{significance_scores}{Optional dataframe of significance scores.}
 
-\item{pathway_column}{Character, integer or NULL. Name/index of the column which contains the pathway names in the enrichment score dataframe. Defaults to \code{1L} If set to NULL, it will use the rownames to identify the pathway for each row.}
+\item{pathway_column}{Character, integer or NULL for pathway name column. Defaults to 1L.}
 
-\item{species}{String describing which species to use. Currently supports "Homo sapiens" or "Mus musculus". Ignored if mapping, g and gene_sets are provided.}
+\item{species}{Species string. Default "Homo sapiens".}
 
-\item{database}{String describing which database to use. Currently supports "reactome" and "GO", which are the MsigDB versions of the full REACTOME database and the GOBP terms. Ignored if mapping, g and gene_sets are provided.}
+\item{database}{Database string. Default "reactome".}
 
-\item{mapping}{Optional data frame containing mapping information used for translating between pathway IDs and names. Must have two columns called processed_name and exact_source containing the names and IDs respectively. See load_and_preprocess_gene_sets() for details on how to generate this.}
+\item{mapping}{Optional mapping data frame.}
 
-\item{g}{Optional igraph object containing the network graph. Can be generated from a dataframe containing inter-pathway relations. See load_and_preprocess_gene_sets() for details on how to generate this.}
+\item{g}{Optional igraph object.}
 
-\item{gene_sets}{Optional list of named lists containing the genes found in the used pathways. Used for pathway overlap adjustments, see adjust_edge_thickness and edge_percentage_labels.}
+\item{gene_sets}{Optional list of gene sets.}
 
-\item{layout}{The layout algorithm to use (e.g., "kk", "fr"). Default is "kk".}
+\item{layout}{Layout algorithm. Default "kk".}
 
-\item{circular}{Logical, whether to use a circular layout. Default is \code{FALSE}.}
+\item{circular}{Logical for circular layout. Default FALSE.}
 
-\item{hide_nodes_without_enrichment}{Logical, whether to hide nodes without enrichment scores. Default is \code{TRUE}.}
+\item{hide_nodes_without_enrichment}{Logical. Default FALSE.}
 
-\item{enrichment_limits}{Numeric vector of length 2 specifying the enrichment limits. If \code{NULL}, limits are calculated from the data.}
+\item{enrichment_limits}{Numeric vector of length 2 or NULL.}
 
-\item{use_node_label}{Logical, whether to display node labels. Default is \code{TRUE}.}
+\item{use_node_label}{Logical. Default TRUE.}
 
-\item{reference}{Optional character string specifying the reference condition.}
+\item{reference}{Optional reference condition string.}
 
-\item{adjust_edge_thickness}{Logical, whether to adjust edge thickness based on overlap. Default is \code{FALSE}.}
+\item{adjust_edge_thickness}{Logical. Default FALSE.}
 
-\item{edge_percentage_labels}{Logical, whether to add edge percentage labels. Default is \code{FALSE}.}
+\item{edge_percentage_labels}{Logical. Default FALSE.}
 
-\item{glyph_size}{Numeric vector specifying the width and height of the glyphs in pixels. Default is \code{c(80, 60)}.}
+\item{glyph_size}{Numeric vector for glyph size. Default c(80, 60).}
 
-\item{res}{Numeric value specifying the resolution of the glyph images in dpi. Default is 96.}
+\item{res}{Numeric resolution. Default 96.}
 
-\item{legend_position}{Optional character string ("topright", "topleft", "bottomleft", "bottomright", "none") determining final legend position. If not provided, the function will try to determine an optimal position.}
+\item{legend_position}{Optional legend position string or "none".}
 
-\item{label_wrap_width}{Integer specifying the maximum number of characters in each line of the label. Default is 40.}
+\item{label_wrap_width}{Integer for label wrapping. Default 40.}
 
-\item{edge_arrows}{Logical, whether to display edges as arrows pointing from parents to children. Default is \code{TRUE}.}
+\item{edge_arrows}{Logical for arrows. Default TRUE.}
 
-\item{repel_labels}{Logical, whether to repel labels to avoid overlaps. Default is \code{FALSE}. If you have a very large graph it is recommended to try this out.}
+\item{repel_labels}{Logical. Default FALSE.}
 
-\item{node_label_size}{Numerical, specifying the size of the node labels.}
+\item{node_label_size}{Numeric label size. Default 1.}
 
-\item{max_depth}{Integer, specifying the maximal depth shown at one time on the graph. Defaults to \code{NULL}. If you have a very large graph it is recommended to try this out.}
+\item{max_depth}{Integer max depth or NULL.}
 
-\item{lollipop_plot}{Bool specifying whether we should create lollipop plots (\code{TRUE}) or not (\code{FALSE}). Lollipop plots make large numbers of comparisons easier to compare than barplots, especially when combined with lollipop_colors, with a slight loss in enrichment strength fidelity.}
+\item{lollipop_plot}{Logical. Default FALSE.}
 
-\item{lollipop_colors}{Optional named list, specifies the colors of conditions in the lollipop plot. Names must match conditions exactly}
+\item{lollipop_colors}{Optional named color list.}
 
-\item{lollipop_significance}{Bool specifying whether significance should be indicated on lollipop plots. Requires significance scores to be provided. Shape for significance is a star.}
+\item{lollipop_significance}{Logical. Default FALSE.}
 
-\item{significance_cutoff}{Optional integer specifying the cutoff for showing significance in the lollipop plot. Defaults to 0.05.}
+\item{significance_cutoff}{Numeric. Default 0.05.}
 }
 \value{
 A ggplot object representing the subgraph.
 }
 \description{
-Plots a subgraph with nodes represented by glyphs that visualize enrichment scores across specified conditions.
-Glyphs are generated on-the-fly using the \code{create_glyph_on_the_fly} function, allowing dynamic comparisons
-and efficient plotting even with a very large number of conditions.
+Plot a Subgraph with Glyphs as Nodes
 }

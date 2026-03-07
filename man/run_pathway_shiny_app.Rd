@@ -16,63 +16,50 @@ run_pathway_shiny_app(
   enrichment_limits = NULL,
   glyph_size = c(80, 60),
   res = 96,
-  lollipop_plot = F,
+  lollipop_plot = FALSE,
   lollipop_colors = NULL,
   cache_dir = file.path(tempdir(), "glyph_cache"),
-  hide_nodes_without_enrichment = T,
+  hide_nodes_without_enrichment = TRUE,
   layout_options_plot = list(layout = "layout_with_dh", physics = FALSE, smooth = TRUE,
     type = "full", randomSeed = 42, options = NULL)
 )
 }
 \arguments{
-\item{enrichment_scores}{A data.frame with pathways as rows and conditions as columns,
-containing enrichment scores. Pathways should correspond to the labels in the pathway graph.}
+\item{enrichment_scores}{A data.frame with pathways as rows and conditions as columns.}
 
-\item{conditions}{A character vector specifying the conditions to visualize. These should match
-the column names in enrichment_scores.}
+\item{conditions}{A character vector specifying the conditions to visualize.}
 
-\item{pathway_column}{Character, integer or NULL. Name/index of the column which contains the pathway names in the enrichment score dataframe. Defaults to \code{1L} If set to NULL, it will use the rownames to identify the pathway for each row.}
+\item{pathway_column}{Character, integer or NULL. Defaults to 1L.}
 
-\item{species}{String describing which species to use. Currently supports "Homo sapiens" or "Mus musculus". Ignored if mapping, g and gene_sets are provided.}
+\item{species}{Species string. Default "Homo sapiens".}
 
-\item{database}{String describing which database to use. Currently supports "reactome" and "GO, which are the MsigDB versions of the full REACTOME database and the GOBP terms. Ignored if mapping, g and gene_sets are provided.}
+\item{database}{Database string. Default "reactome".}
 
-\item{mapping}{Optional data frame containing mapping information used for translating between pathway IDs and names. Must have two columns called processed_name and exact_source containing the names and IDs respectively. See load_and_preprocess_gene_sets() for details on how to generate this.}
+\item{mapping}{Optional mapping data frame.}
 
-\item{g}{Optional igraph object containing the network graph. Can be generated from a dataframe containing inter-pathway relations. See load_and_preprocess_gene_sets() for details on how to generate this.}
+\item{g}{Optional igraph object.}
 
-\item{gene_sets}{Optional list of named lists containing the genes found in the used pathways. Used for pathway overlap adjustments, see adjust_edge_thickness and edge_percentage_labels.}
+\item{gene_sets}{Optional named list.}
 
-\item{enrichment_limits}{Optional numeric vector of length two specifying the minimum and
-maximum enrichment scores for visualization. If NULL, limits are computed from
-enrichment_scores.}
+\item{enrichment_limits}{Optional numeric vector of length two.}
 
-\item{glyph_size}{Optional numeric vector specifying the width and height of glyphs in
-pixels. Default is c(80, 60).}
+\item{glyph_size}{Numeric vector. Default c(80, 60).}
 
-\item{res}{Optional numeric value specifying the resolution of glyph images in DPI.
-Default is 96.}
+\item{res}{Numeric resolution. Default 96.}
 
-\item{lollipop_plot}{Bool specifying whether we should create lollipop plots (\code{TRUE}) or not (\code{FALSE}). Lollipop plots make large numbers of comparisons easier to compare than barplots, especially when combined with lollipop_colors, with a slight loss in enrichment strength fidelity.}
+\item{lollipop_plot}{Logical. Default FALSE.}
 
-\item{lollipop_colors}{Optional named list, specifies the colors of conditions in the lollipop plot. Names must match condititions exactly}
+\item{lollipop_colors}{Optional named list.}
 
-\item{cache_dir}{Optional character string specifying the directory to store cached glyphs.
-Default is "glyph_cache".}
+\item{cache_dir}{Character cache directory path.}
 
-\item{hide_nodes_without_enrichment}{Logical. If \code{TRUE}, nodes in the pathway graph that have
-no enrichment scores (i.e., are missing scores for all \code{conditions}) will be
-removed before launching the Shiny app. Defaults to \code{FALSE}.}
+\item{hide_nodes_without_enrichment}{Logical. Default TRUE.}
 
-\item{layout_options_plot}{Optional list specifying layout options for ggraph.
-Default is list(layout = "fr", type = "full", physics = FALSE).}
+\item{layout_options_plot}{List of layout options.}
 }
 \value{
-Launches a Shiny application for interactive pathway visualization.
+Launches a Shiny application.
 }
 \description{
-This function launches a Shiny application for visualizing pathway enrichment scores
-and their relationships within a pathway graph. Users can interactively explore
-top-level pathways and their sub-pathways, view glyphs representing enrichment scores
-across multiple conditions, and reset the view to the initial state.
+Launch Pathway Visualization Shiny Application
 }

@@ -94,7 +94,7 @@ We use the piano package with fgsea to run the pathway analysis. Here we are usi
 
 ```{r}
 ## We load the pathway database directly from the supervisoR package!
-default_data <- supervisoR::load_default_data(database = "reactome",
+default_data <- load_default_data(database = "reactome",
                                   species = "Homo sapiens")
 
 res_list <- NULL
@@ -149,7 +149,8 @@ p1 <- plot_subgraph(
   enrichment_limits = NULL,
   use_node_label = TRUE,
   repel = F,
-  max_depth = 2
+  max_depth = 2,
+  lollipop_plot = T
 )
 
 run_pathway_shiny_app(mapping = default_data$mapping,

@@ -14,20 +14,17 @@ generate_relation_legend(
 )
 }
 \arguments{
-\item{relations_present}{A character vector of relations that are present in the current dataset (excluding NA).}
+\item{relations_present}{A character vector of relations that are present in the current dataset.}
 
 \item{relation_colors}{A named character vector mapping each relation to a color.}
 
-\item{relation_linetypes}{A named character vector mapping each relation to a valid ggplot2 linetype
-(e.g., "solid", "dashed", "dotted", "dotdash", "longdash").}
+\item{relation_linetypes}{A named character vector mapping each relation to a ggplot2 linetype.}
 
 \item{textsize}{Numeric value specifying the size of the relation labels. Default is 5.}
 }
 \value{
-A ggplot object representing the relation legend. Each relation is shown with its corresponding line style and color.
+A ggplot object representing the relation legend.
 }
 \description{
-Creates a standalone legend plot depicting the line types and colors associated
-with different pathway relations. This plot can be combined with the enrichment
-legend plot using \code{cowplot::plot_grid()} to display a unified legend.
+Generate Relation Legend Plot
 }
