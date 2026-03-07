@@ -1,6 +1,6 @@
 ## supervisoR
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.md) [![GitHub release](https://img.shields.io/github/v/release/abmarstrand/supervisoR?display_name=tag)](../../releases) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15590859.svg)](https://doi.org/10.5281/zenodo.15590859)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.md) [![GitHub release](https://img.shields.io/github/v/release/abmarstrand/supervisoR?display_name=tag)](../../releases) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18904924.svg)](https://doi.org/10.5281/zenodo.18904924)
 
 Visualize gene-set enrichment on **hierarchical pathway and ontology networks** in R. The package supports both **publication-oriented static figures** built with `ggplot2`/`ggraph` and **interactive exploration** with `Shiny` + `visNetwork`.
 
