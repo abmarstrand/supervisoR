@@ -2,30 +2,58 @@
 % Please edit documentation in R/glyph_functions.R
 \name{generate_legend_plot}
 \alias{generate_legend_plot}
-\title{Create an Enrichment Score Legend}
+\title{Generate a legend for pathway glyphs}
 \usage{
 generate_legend_plot(
   conditions,
   enrichment_limits,
   reference = NULL,
   lollipop_plot = TRUE,
-  lollipop_colors = NULL
+  lollipop_colors = NULL,
+  lollipop_significance = FALSE,
+  lollipop_size_scale = 1
 )
 }
 \arguments{
-\item{conditions}{Character vector of conditions to include in the glyph.}
+\item{conditions}{Character vector of conditions shown in the glyphs.}
 
-\item{enrichment_limits}{Numeric vector of length 2 specifying the enrichment limits.}
+\item{enrichment_limits}{Numeric vector of length 2 defining the enrichment
+range represented by the legend.}
 
-\item{reference}{Optional string describing which conditions should be used as a reference.}
+\item{reference}{Optional character scalar naming the reference condition used
+to center enrichment values. When supplied, the y-axis label states that the
+legend is relative to that reference.}
 
-\item{lollipop_plot}{Logical specifying whether we should create lollipop plots.}
+\item{lollipop_plot}{Logical; if \code{TRUE}, draw a lollipop-style legend,
+otherwise draw a bar-style legend.}
 
-\item{lollipop_colors}{Optional named list, specifies the colors of conditions in the lollipop plot.}
+\item{lollipop_colors}{Optional named character vector mapping condition names
+to colors. When \code{NULL}, colors are mapped to enrichment values instead.}
+
+\item{lollipop_significance}{Logical; if \code{TRUE}, show the significance shape
+encoding in the legend using a triangle for significant and a circle for
+non-significant values.}
+
+\item{lollipop_size_scale}{Numeric scalar that scales both the lollipop stem
+width and point size in the legend.}
 }
 \value{
-A ggplot object representing the enrichment legend.
+A \code{ggplot} object that can be printed directly or combined with other
+plots.
 }
 \description{
-Create an Enrichment Score Legend
+Create a standalone legend that explains the glyph encoding used by
+\code{\link[=create_glyph_on_the_fly]{create_glyph_on_the_fly()}} and \code{\link[=plot_subgraph]{plot_subgraph()}}. This is primarily useful
+when assembling publication figures or custom layouts outside the built-in
+plotting helpers.
+}
+\examples{
+generate_legend_plot(
+  conditions = c("A", "B", "C"),
+  enrichment_limits = c(-2, 2),
+  lollipop_plot = TRUE
+)
+}
+\seealso{
+\code{\link[=create_glyph_on_the_fly]{create_glyph_on_the_fly()}}, \code{\link[=generate_relation_legend]{generate_relation_legend()}}
 }

@@ -1,16 +1,16 @@
 Package: supervisoR
 Type: Package
 Title: Pathway Enrichment Visualization
-Version: 1.1
+Version: 1.2.0
 Author: person("Hans Adam Boegh", "Marstrand-Joergensen",
   email = "adamboegh@gmail.com",
   role = c("cre","aut"),
   comment = c(ORCID = "0009-0005-5917-3154"))
 Maintainer: Hans Adam Boegh Marstrand-Joergensen <adamboegh@gmail.com>
-Description: Package enabling visualization of hierarchical pathways across many conditions.
-  Currently working with REACTOME pathways, enabling exploratory data analyses of a given parent pathway and all of its children.
-  Works for an arbitrary number of groups and with arbitrary input data, though we recommend using directional enrichment scores.
-  Contains both a shiny app for exploration and commands for the generation of hierarchical plots.
+Description: Visualize pathway enrichment scores on hierarchical pathway or ontology graphs.
+  Supports publication-oriented static figures and interactive exploration via
+  Shiny, with built-in helpers for Reactome and GO biological process hierarchies,
+  compact multi-condition glyphs, and workflow helpers for custom hierarchies.
 License: MIT + LICENSE.md
 Imports:
     msigdbr,

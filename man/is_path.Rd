@@ -2,20 +2,21 @@
 % Please edit documentation in R/utility.R
 \name{is_path}
 \alias{is_path}
-\title{Check if a string is a file path}
+\title{Test whether a string looks like a file path}
 \usage{
 is_path(name)
 }
 \arguments{
-\item{name}{Character string to check.}
+\item{name}{Character vector to test.}
 }
 \value{
-Logical value indicating whether the string is a path.
+Logical vector; \code{TRUE} indicates that at least one path separator was
+detected.
 }
 \description{
-Determines if a given string represents a file path by checking for path separators.
+Check whether a string contains Unix or Windows path separators.
 }
 \examples{
-is_path("path/to/file.txt") # Returns TRUE
-is_path("filename") # Returns FALSE
+is_path("path/to/file.txt")
+is_path("filename")
 }

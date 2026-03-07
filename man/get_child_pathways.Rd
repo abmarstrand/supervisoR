@@ -2,20 +2,36 @@
 % Please edit documentation in R/preprocessing.R
 \name{get_child_pathways}
 \alias{get_child_pathways}
-\title{Get child pathways of a parent pathway}
+\title{Get all descendant pathways below a parent pathway}
 \usage{
 get_child_pathways(parent_geneset_name, mapping, g)
 }
 \arguments{
-\item{parent_geneset_name}{Name of the parent geneset.}
+\item{parent_geneset_name}{Character scalar giving the parent pathway name in
+processed-name form.}
 
-\item{mapping}{Data frame containing mapping information.}
+\item{mapping}{Mapping data frame containing \code{processed_name} and
+\code{exact_source} columns.}
 
-\item{g}{The pathway graph (igraph object).}
+\item{g}{Pathway graph as an \code{igraph} object.}
 }
 \value{
-A character vector of child pathway names.
+Character vector of descendant pathway names, excluding the parent
+pathway itself.
 }
 \description{
-Get child pathways of a parent pathway
+Return the processed pathway names for every descendant of a selected parent
+pathway in the directed pathway graph.
+}
+\examples{
+gene_sets <- list(Parent = "G1", Child = "G2", Grandchild = "G3")
+relations <- data.frame(
+  parent = c("Parent", "Child"),
+  child = c("Child", "Grandchild")
+)
+prep <- load_and_preprocess_gene_sets(gene_sets, relations)
+get_child_pathways("Parent", prep$mapping, prep$pathway_graph)
+}
+\seealso{
+\code{\link[=plot_subgraph]{plot_subgraph()}}, \code{\link[=load_and_preprocess_gene_sets]{load_and_preprocess_gene_sets()}}
 }

@@ -2,18 +2,41 @@
 % Please edit documentation in R/preprocessing.R
 \name{load_default_data}
 \alias{load_default_data}
-\title{Load and preprocess gene sets}
+\title{Load built-in pathway resources}
 \usage{
 load_default_data(database = "reactome", species = "Homo sapiens")
 }
 \arguments{
-\item{database}{Which database should we load data for? Currently supports 'reactome' and 'GO' corresponding to the msigdb Reactome or GOBP databases.}
+\item{database}{Character scalar identifying the built-in database. Supported
+values are \code{"reactome"} and \code{"GO"}.}
 
-\item{species}{Which species should we load data for? Support species in the msigdb database, currently 'Homo sapiens' and 'Mus musculus'.}
+\item{species}{Character scalar passed to \code{msigdbr::msigdbr()}, for example
+\code{"Homo sapiens"} or \code{"Mus musculus"}.}
 }
 \value{
-A list containing gene sets, mapping data frame, and the pathway graph.
+A list with four elements: \code{gene_sets} (named list), \code{mapping}
+(data frame with processed and exact pathway identifiers), \code{pathway_graph}
+(\code{igraph} object), and \code{relations} (edge table).
 }
 \description{
-Load and preprocess gene sets
+Load the package's built-in pathway gene sets, mapping table, and pathway
+relations for one supported database/species combination. This is the easiest
+entry point for pathway analyses and visualization
+}
+\details{
+The returned object contains everything needed by \code{\link[=plot_subgraph]{plot_subgraph()}} and
+\code{\link[=run_pathway_shiny_app]{run_pathway_shiny_app()}}. \code{database = "reactome"} loads Reactome relations
+bundled with the package, while \code{database = "GO"} loads Gene Ontology
+biological process relations. Gene memberships are obtained via \code{msigdbr} and
+pathway relations are read from files stored in \verb{inst/extdata/}.
+}
+\examples{
+\donttest{
+data <- load_default_data(database = "reactome", species = "Homo sapiens")
+names(data)
+head(data$mapping)
+}
+}
+\seealso{
+\code{\link[=load_and_preprocess_gene_sets]{load_and_preprocess_gene_sets()}}, \code{\link[=plot_subgraph]{plot_subgraph()}}
 }

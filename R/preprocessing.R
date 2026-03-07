@@ -1,4 +1,15 @@
-#' Load and preprocess gene sets
+#' Load built-in pathway resources
+#'
+#' Load the package's built-in pathway gene sets, mapping table, and pathway
+#' relations for one supported database/species combination. This is the easiest
+#' entry point for pathway analyses and visualization
+#'
+#' @details
+#' The returned object contains everything needed by [plot_subgraph()] and
+#' [run_pathway_shiny_app()]. `database = "reactome"` loads Reactome relations
+#' bundled with the package, while `database = "GO"` loads Gene Ontology
+#' biological process relations. Gene memberships are obtained via `msigdbr` and
+#' pathway relations are read from files stored in `inst/extdata/`.
 #'
 #' @importFrom stringr str_to_title str_remove str_replace_all
 #' @importFrom igraph graph_from_data_frame V vertex edges V<-
@@ -6,9 +17,20 @@
 #' @importFrom msigdbr msigdbr
 #' @importFrom readr read_tsv
 #' @importFrom magrittr %>%
-#' @param database Which database should we load data for? Currently supports 'reactome' and 'GO' corresponding to the msigdb Reactome or GOBP databases.
-#' @param species Which species should we load data for? Support species in the msigdb database, currently 'Homo sapiens' and 'Mus musculus'.
-#' @return A list containing gene sets, mapping data frame, and the pathway graph.
+#' @param database Character scalar identifying the built-in database. Supported
+#'   values are `"reactome"` and `"GO"`.
+#' @param species Character scalar passed to `msigdbr::msigdbr()`, for example
+#'   `"Homo sapiens"` or `"Mus musculus"`.
+#' @return A list with four elements: `gene_sets` (named list), `mapping`
+#'   (data frame with processed and exact pathway identifiers), `pathway_graph`
+#'   (`igraph` object), and `relations` (edge table).
+#' @examples
+#' \donttest{
+#' data <- load_default_data(database = "reactome", species = "Homo sapiens")
+#' names(data)
+#' head(data$mapping)
+#' }
+#' @seealso [load_and_preprocess_gene_sets()], [plot_subgraph()]
 #' @export
 load_default_data <- function(database = "reactome",
                               species = "Homo sapiens") {
@@ -190,16 +212,43 @@ load_default_data <- function(database = "reactome",
   ))
 }
 
-#' Load and preprocess gene sets and pathway relations
+#' Build a pathway graph from custom gene sets and relations
+#'
+#' Convert user-supplied pathway gene sets and parent-child relations into the
+#' internal objects used throughout the package.
+#'
+#' @details
+#' Use this function when you have your own pathway collection and want to use
+#' the plotting and Shiny interfaces without relying on the built-in Reactome or
+#' GO resources.
+#'
+#' `gene_sets` must be a named list whose names are the human-readable pathway
+#' names you want to use in plots. `pathways_relation` should contain pathway
+#' identifiers used in the graph edges. If those identifiers differ from the
+#' names in `gene_sets`, provide `translation_layer` to link them.
 #'
 #' @importFrom igraph graph_from_data_frame V vertex edges
 #' @importFrom dplyr left_join
 #' @importFrom stats setNames
 #' @importFrom stringr str_to_title
-#' @param gene_sets Named list of gene sets, with pathways as names and genes as elements.
-#' @param pathways_relation Data frame with two columns: 'parent' and 'child' pathways.
-#' @param translation_layer Optional data frame with two columns: 'gene_sets_name' and 'relation_name'.
-#' @return A list containing gene sets, mapping data frame and the pathway graph.
+#' @param gene_sets Named list of gene vectors. List names are treated as the
+#'   pathway names shown to the user.
+#' @param pathways_relation Data frame containing at least `parent` and `child`
+#'   columns describing the directed pathway hierarchy.
+#' @param translation_layer Optional two-column data frame that maps gene-set
+#'   names to relation-layer identifiers. The first column should match names in
+#'   `gene_sets`; the second should match the identifiers used in
+#'   `pathways_relation`.
+#' @return A list with `gene_sets`, `mapping`, and `pathway_graph` elements.
+#' @examples
+#' gene_sets <- list(
+#'   Glycolysis = c("HK1", "PFKM", "PKM"),
+#'   TCA = c("CS", "ACO2", "IDH3A")
+#' )
+#' pathways_relation <- data.frame(parent = "Glycolysis", child = "TCA")
+#' prep <- load_and_preprocess_gene_sets(gene_sets, pathways_relation)
+#' prep$mapping
+#' @seealso [load_default_data()], [plot_subgraph()]
 #' @export
 load_and_preprocess_gene_sets <- function(gene_sets,
                                           pathways_relation,
@@ -250,7 +299,6 @@ load_and_preprocess_gene_sets <- function(gene_sets,
                                        mapping,
                                        by = "exact_source")
   
-  # FIX: vectorized check on each element, not just [1]
   complete_mapping$processed_name <- ifelse(
     is.na(complete_mapping$processed_name),
     ifelse(grepl("REACTOME", complete_mapping$exact_source),
@@ -284,12 +332,33 @@ load_and_preprocess_gene_sets <- function(gene_sets,
 }
 
 
-#' Add overlap information to edges
+#' Add gene-set overlap information to graph edges
+#'
+#' Compute the number of shared genes between the source and target pathway of
+#' every edge in a pathway graph and store the results as edge attributes.
+#'
+#' @details
+#' The function adds two edge attributes to `g`: `overlap`, the number of shared
+#' genes, and `percent_overlap`, the overlap as a percentage of the source
+#' pathway gene-set size.
 #'
 #' @importFrom igraph E ends V
-#' @param g The pathway graph (igraph object).
-#' @param gene_sets A named list of gene sets.
-#' @return The graph with overlap information added to edges.
+#' @param g Pathway graph as an `igraph` object. Vertices must already contain a
+#'   `genes` attribute.
+#' @param gene_sets Named list of gene sets. This is included for API symmetry
+#'   with the rest of the package; overlap is derived from the vertex `genes`
+#'   attributes on `g`.
+#' @return The input graph with `overlap` and `percent_overlap` edge attributes
+#'   added.
+#' @examples
+#' gene_sets <- list(Parent = c("G1", "G2"), Child = c("G2", "G3"))
+#' prep <- load_and_preprocess_gene_sets(
+#'   gene_sets,
+#'   data.frame(parent = "Parent", child = "Child")
+#' )
+#' g2 <- add_overlap_to_edges(prep$pathway_graph, prep$gene_sets)
+#' igraph::edge_attr(g2, "overlap")
+#' @seealso [plot_subgraph()]
 #' @export
 add_overlap_to_edges <- function(g, gene_sets) {
   edge_ends <- ends(g, E(g))
@@ -313,13 +382,28 @@ add_overlap_to_edges <- function(g, gene_sets) {
   return(g)
 }
 
-#' Get child pathways of a parent pathway
+#' Get all descendant pathways below a parent pathway
+#'
+#' Return the processed pathway names for every descendant of a selected parent
+#' pathway in the directed pathway graph.
 #'
 #' @importFrom igraph subcomponent V
-#' @param parent_geneset_name Name of the parent geneset.
-#' @param mapping Data frame containing mapping information.
-#' @param g The pathway graph (igraph object).
-#' @return A character vector of child pathway names.
+#' @param parent_geneset_name Character scalar giving the parent pathway name in
+#'   processed-name form.
+#' @param mapping Mapping data frame containing `processed_name` and
+#'   `exact_source` columns.
+#' @param g Pathway graph as an `igraph` object.
+#' @return Character vector of descendant pathway names, excluding the parent
+#'   pathway itself.
+#' @examples
+#' gene_sets <- list(Parent = "G1", Child = "G2", Grandchild = "G3")
+#' relations <- data.frame(
+#'   parent = c("Parent", "Child"),
+#'   child = c("Child", "Grandchild")
+#' )
+#' prep <- load_and_preprocess_gene_sets(gene_sets, relations)
+#' get_child_pathways("Parent", prep$mapping, prep$pathway_graph)
+#' @seealso [plot_subgraph()], [load_and_preprocess_gene_sets()]
 #' @export
 get_child_pathways <- function(parent_geneset_name, mapping, g) {
   if (length(parent_geneset_name) == 0) {

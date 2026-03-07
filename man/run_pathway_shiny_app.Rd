@@ -2,7 +2,7 @@
 % Please edit documentation in R/shiny.R
 \name{run_pathway_shiny_app}
 \alias{run_pathway_shiny_app}
-\title{Launch Pathway Visualization Shiny Application}
+\title{Launch the interactive pathway Shiny app}
 \usage{
 run_pathway_shiny_app(
   enrichment_scores,
@@ -25,41 +25,86 @@ run_pathway_shiny_app(
 )
 }
 \arguments{
-\item{enrichment_scores}{A data.frame with pathways as rows and conditions as columns.}
+\item{enrichment_scores}{Data frame with pathways in rows and conditions in
+columns after any \code{pathway_column} processing.}
 
-\item{conditions}{A character vector specifying the conditions to visualize.}
+\item{conditions}{Character vector of condition names to make available in the
+app.}
 
-\item{pathway_column}{Character, integer or NULL. Defaults to 1L.}
+\item{pathway_column}{Column index, column name, or \code{NULL} specifying where
+pathway names are stored in \code{enrichment_scores}.}
 
-\item{species}{Species string. Default "Homo sapiens".}
+\item{species}{Species passed to \code{\link[=load_default_data]{load_default_data()}} when built-in resources
+are loaded automatically.}
 
-\item{database}{Database string. Default "reactome".}
+\item{database}{Built-in database passed to \code{\link[=load_default_data]{load_default_data()}}.}
 
 \item{mapping}{Optional mapping data frame.}
 
-\item{g}{Optional igraph object.}
+\item{g}{Optional pathway graph as an \code{igraph} object.}
 
-\item{gene_sets}{Optional named list.}
+\item{gene_sets}{Optional named list of pathway gene sets.}
 
-\item{enrichment_limits}{Optional numeric vector of length two.}
+\item{enrichment_limits}{Optional numeric vector of length 2. When \code{NULL}, the
+app computes limits from the currently selected conditions.}
 
-\item{glyph_size}{Numeric vector. Default c(80, 60).}
+\item{glyph_size}{Numeric vector of length 2 giving glyph width and height in
+pixels.}
 
-\item{res}{Numeric resolution. Default 96.}
+\item{res}{Numeric rendering resolution in dpi.}
 
-\item{lollipop_plot}{Logical. Default FALSE.}
+\item{lollipop_plot}{Logical; if \code{TRUE}, use lollipop glyphs rather than bar
+glyphs.}
 
-\item{lollipop_colors}{Optional named list.}
+\item{lollipop_colors}{Optional named character vector mapping conditions to
+colors.}
 
-\item{cache_dir}{Character cache directory path.}
+\item{cache_dir}{Directory used to cache rendered glyphs.}
 
-\item{hide_nodes_without_enrichment}{Logical. Default TRUE.}
+\item{hide_nodes_without_enrichment}{Logical; if \code{TRUE}, remove pathways with
+no scores before starting the app.}
 
-\item{layout_options_plot}{List of layout options.}
+\item{layout_options_plot}{Named list forwarded to \code{visNetwork} layout
+configuration.}
 }
 \value{
-Launches a Shiny application.
+A \code{shiny.appobj}. Printing or running the result launches the app.
 }
 \description{
-Launch Pathway Visualization Shiny Application
+Start an interactive pathway browser built on \code{shiny} and \code{visNetwork}. The
+app lets users browse the pathway hierarchy, search for pathways or genes,
+switch conditions, choose a reference condition, and inspect the same glyph
+encodings used in the static plotting functions.
+}
+\details{
+Like \code{\link[=plot_subgraph]{plot_subgraph()}}, this function can either use custom objects supplied
+through \code{mapping}, \code{g}, and \code{gene_sets}, or it can automatically load the
+built-in Reactome/GO data.
+
+\code{enrichment_scores} must be pathway-by-condition data. If pathway names are
+stored in a column, point \code{pathway_column} to that column; otherwise set
+\code{pathway_column = NULL} and use row names.
+}
+\examples{
+\dontrun{
+gene_sets <- list(Parent = c("G1", "G2"), Child = c("G2", "G3"))
+relations <- data.frame(parent = "Parent", child = "Child")
+prep <- load_and_preprocess_gene_sets(gene_sets, relations)
+scores <- data.frame(
+  cond1 = c(1.0, -0.5),
+  cond2 = c(0.6, -0.2),
+  row.names = c("Parent", "Child")
+)
+run_pathway_shiny_app(
+  enrichment_scores = scores,
+  conditions = c("cond1", "cond2"),
+  pathway_column = NULL,
+  mapping = prep$mapping,
+  g = prep$pathway_graph,
+  gene_sets = prep$gene_sets
+)
+}
+}
+\seealso{
+\code{\link[=plot_subgraph]{plot_subgraph()}}, \code{\link[=generate_glyph_images_cached]{generate_glyph_images_cached()}}
 }

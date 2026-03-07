@@ -16,7 +16,9 @@ knitr::opts_chunk$set(
 
 # Introduction
 
-This vignette uses a publically available dataset containing human kidney biopsy RNAseq from DKD patients (GSE142025) to perform an example data analysis in R using supervisoR and DESeq2. 
+This vignette demonstrates a full RNA-seq to pathway-visualization workflow using `supervisoR`. The example uses a publicly available kidney-biopsy RNA-seq dataset from diabetic kidney disease patients (`GSE142025`) together with `DESeq2` for differential expression and `piano` for pathway analysis.
+
+The goal is not to prescribe a single upstream analysis strategy. Instead, the vignette shows one reproducible way to produce a pathway-by-condition score matrix that can be visualized with `supervisoR`.
 
 ```{r setup}
 library(supervisoR)
@@ -29,140 +31,216 @@ library(piano)
 library(tidyr)
 ```
 
-# Loading data
+# Load expression data from GEO
 
-We load data directly from GEO. This code has been modified from the GEO2R website (https://www.ncbi.nlm.nih.gov/geo/geo2r) to simplify the data processing. 
+The code below is adapted from the GEO2R workflow (https://www.ncbi.nlm.nih.gov/geo/geo2r) and simplified for direct use in R.
 
 ```{r}
-# load counts table from GEO
 urld <- "https://www.ncbi.nlm.nih.gov/geo/download/?format=file&type=rnaseq_counts"
-path <- paste(urld, "acc=GSE142025", "file=GSE142025_raw_counts_GRCh38.p13_NCBI.tsv.gz", sep="&");
-tbl <- as.matrix(read_tsv(path)) %>% `rownames<-`(., .[,1]) %>% .[,-1]
+path <- paste(
+  urld,
+  "acc=GSE142025",
+  "file=GSE142025_raw_counts_GRCh38.p13_NCBI.tsv.gz",
+  sep = "&"
+)
 
-# load gene annotations 
-apath <- paste(urld, "type=rnaseq_counts", "file=Human.GRCh38.p13.annot.tsv.gz", sep="&")
-annot <- read_tsv(apath, quote="")
+tbl <- as.matrix(read_tsv(path)) %>%
+  `rownames<-`(.[, 1]) %>%
+  .[, -1]
+
+apath <- paste(
+  urld,
+  "type=rnaseq_counts",
+  "file=Human.GRCh38.p13.annot.tsv.gz",
+  sep = "&"
+)
+annot <- read_tsv(apath, quote = "")
 rownames(annot) <- annot$GeneID
+```
 
-# sample selection
+# Define groups and build a DESeq2 dataset
+
+```{r}
 gsms <- "000000000000000000000111111222222222"
-sml <- strsplit(gsms, split="")[[1]]
+sml <- strsplit(gsms, split = "")[[1]]
 
-# group membership for samples
 gs <- factor(sml)
-groups <- make.names(c("aDKD","eDKD","Healthy"))
+groups <- make.names(c("aDKD", "eDKD", "Healthy"))
 levels(gs) <- groups
 sample_info <- data.frame(Group = gs, row.names = colnames(tbl))
 
-# pre-filter low count genes
-# keep genes with at least N counts > 10, where N = size of smallest group
-keep <- rowSums( tbl >= 10 ) >= min(table(gs))
+keep <- rowSums(tbl >= 10) >= min(table(gs))
 tbl <- tbl[keep, ]
 
-ds <- DESeqDataSetFromMatrix(countData=tbl, colData=sample_info, design= ~Group)
+ds <- DESeqDataSetFromMatrix(
+  countData = tbl,
+  colData = sample_info,
+  design = ~ Group
+)
 
-ds <- DESeq(ds, test="LRT", reduced = ~ 1)  # Use LRT for all-around gene ranking
-
-# extract results
-r_aDKD <- results(ds, contrast = c("Group", "aDKD", "Healthy"), alpha=0.05, pAdjustMethod ="BH") %>% as.data.frame()
-r_eDKD <- results(ds, contrast = c("Group", "eDKD", "Healthy"), alpha=0.05, pAdjustMethod ="BH") %>% as.data.frame()
-
-r_all <- left_join(r_aDKD %>%
-                     rownames_to_column("gene") %>%
-                     dplyr::select(gene, log2FoldChange),
-                   r_eDKD %>%
-                     rownames_to_column("gene") %>%
-                     dplyr::select(gene, log2FoldChange),
-                   by = "gene",
-                   suffix = c(".aDKD", ".eDKD")) %>%
-  left_join(.,
-            annot %>%
-              as.data.frame() %>%
-              dplyr::select(GeneID, Symbol) %>%
-              mutate_all(as.character),
-            by = c("gene" = "GeneID")) %>%
-  dplyr::select(!gene) %>%
-  dplyr::group_by(Symbol) %>%
-  dplyr::summarize(across(where(is.numeric), ~ mean(.x ))) %>%
-  ungroup() %>%
-  column_to_rownames("Symbol") %>%
-  `colnames<-`(., sub("log2FoldChange.","",colnames(.)))
+ds <- DESeq(ds, test = "LRT", reduced = ~ 1)
 ```
 
-# Run pathway analysis
-We use the piano package with fgsea to run the pathway analysis. Here we are using the included MSigDB version of the Reactome pathways, but this could be replaced with any pathway database. It should however have some hierarchical element for proper use with the supervisoR package. Take a look at the introduction vignette to see how you could use your own database for supervisoR visualization
+# Extract gene-level statistics
+
+Here we calculate log2 fold changes for each disease group relative to healthy controls and then collapse duplicated gene symbols by averaging the numeric columns.
 
 ```{r}
-## We load the pathway database directly from the supervisoR package!
-default_data <- load_default_data(database = "reactome",
-                                  species = "Homo sapiens")
+r_aDKD <- results(
+  ds,
+  contrast = c("Group", "aDKD", "Healthy"),
+  alpha = 0.05,
+  pAdjustMethod = "BH"
+) %>% as.data.frame()
 
-res_list <- NULL
+r_eDKD <- results(
+  ds,
+  contrast = c("Group", "eDKD", "Healthy"),
+  alpha = 0.05,
+  pAdjustMethod = "BH"
+) %>% as.data.frame()
+
+r_all <- left_join(
+  r_aDKD %>%
+    rownames_to_column("gene") %>%
+    dplyr::select(gene, log2FoldChange),
+  r_eDKD %>%
+    rownames_to_column("gene") %>%
+    dplyr::select(gene, log2FoldChange),
+  by = "gene",
+  suffix = c(".aDKD", ".eDKD")
+) %>%
+  left_join(
+    .,
+    annot %>%
+      as.data.frame() %>%
+      dplyr::select(GeneID, Symbol) %>%
+      mutate_all(as.character),
+    by = c("gene" = "GeneID")
+  ) %>%
+  dplyr::select(!gene) %>%
+  dplyr::group_by(Symbol) %>%
+  dplyr::summarize(across(where(is.numeric), ~ mean(.x, na.rm = TRUE))) %>%
+  ungroup() %>%
+  column_to_rownames("Symbol") %>%
+  `colnames<-`(sub("log2FoldChange\\.", "", colnames(.)))
+```
+# Run pathway analysis
+
+In this example we use the Reactome hierarchy included with `supervisoR`, then run `piano` with `fgsea` as the pathway statistic engine.
+
+```{r}
+default_data <- load_default_data(
+  database = "reactome",
+  species = "Homo sapiens"
+)
+
 myGSC <- piano::loadGSC(stack(default_data$gene_sets))
+res_list <- list()
+
+set.seed(42)
 for (i in colnames(r_all)) {
   tmp_lfc <- r_all[i] %>%
     mutate_all(~ replace_na(.x, 1))
-  
-  piano_res <- piano::runGSA(geneLevelStats = tmp_lfc, 
-    gsc = myGSC, geneSetStat = "fgsea", signifMethod = "geneSampling", 
-    nPerm = 10000, adjMethod="BH", gsSizeLim = c(5, Inf))
-  
+
+  piano_res <- piano::runGSA(
+    geneLevelStats = tmp_lfc,
+    gsc = myGSC,
+    geneSetStat = "fgsea",
+    signifMethod = "geneSampling",
+    nPerm = 10000,
+    adjMethod = "BH",
+    gsSizeLim = c(5, Inf)
+  )
+
   tmp_res <- piano::GSAsummaryTable(piano_res) %>%
-      dplyr::select(Name,
-                    `Stat (dist.dir)`,
-                    `p adj (dist.dir.up)`,
-                    `p adj (dist.dir.dn)`) %>%
-      `colnames<-`(c("pathway",
-                     "statDistinctDir",
-                     "pAdjDistinctDirUp",
-                     "pAdjDistinctDirDn")) %>%
-      mutate(contrast = i) %>%
-      mutate_at(vars(pAdjDistinctDirUp,pAdjDistinctDirDn), ~ if_else(is.na(.), 1, .)) %>%
-      mutate(direction = case_when(pAdjDistinctDirUp > pAdjDistinctDirDn ~ "up",
-                                   pAdjDistinctDirUp < pAdjDistinctDirDn ~ "down",
-                                   T ~ "neither")) 
-  
-    res_list[[i]] <- tmp_res
+    dplyr::select(
+      Name,
+      `Stat (dist.dir)`,
+      `p adj (dist.dir.up)`,
+      `p adj (dist.dir.dn)`
+    ) %>%
+    `colnames<-`(c(
+      "pathway",
+      "statDistinctDir",
+      "pAdjDistinctDirUp",
+      "pAdjDistinctDirDn"
+    )) %>%
+    mutate(contrast = i) %>%
+    mutate_at(
+      vars(pAdjDistinctDirUp, pAdjDistinctDirDn),
+      ~ if_else(is.na(.), 1, .)
+    ) %>%
+    mutate(
+      direction = case_when(
+        pAdjDistinctDirUp > pAdjDistinctDirDn ~ "up",
+        pAdjDistinctDirUp < pAdjDistinctDirDn ~ "down",
+        TRUE ~ "neither"
+      )
+    )
+
+  res_list[[i]] <- tmp_res
 }
 
 pw_out <- do.call(rbind, unname(res_list)) %>%
   dplyr::select(pathway, statDistinctDir, contrast) %>%
-  pivot_wider(id_cols = pathway,
-              names_from = contrast,
-              values_from = statDistinctDir) %>%
+  pivot_wider(
+    id_cols = pathway,
+    names_from = contrast,
+    values_from = statDistinctDir
+  ) %>%
   column_to_rownames("pathway")
 ```
 
-# Visualize using supervisoR
-We can now visualize our results using both the plotting functionality and the shiny app. 
+# Visualize a pathway family
+
+Now that we have a pathway-by-condition matrix, we can visualize any branch of the Reactome hierarchy.
+
 ```{r}
+lollipop_colors <- c(
+  aDKD = "#CC6677",
+  eDKD = "#332288"
+)
+
 p1 <- plot_subgraph(
   parent_geneset_name = "Metabolism Of Lipids",
   mapping = default_data$mapping,
   g = default_data$pathway_graph,
   gene_sets = default_data$gene_sets,
-  pathway_column = NULL, # WE SET THIS TO NULL SINCE WE HAVE THE PATHWAYS AS ROWNAMES. OTHERWISE, SPECIFY THE COLUMN BY EITHER INDEX OR NAME,
+  pathway_column = NULL,
   enrichment_scores = pw_out,
   conditions = colnames(pw_out),
-  layout = "dh",
+  layout = "kk",
   hide_nodes_without_enrichment = TRUE,
-  enrichment_limits = NULL,
   use_node_label = TRUE,
-  repel = F,
-  max_depth = 2,
-  lollipop_plot = T
+  repel_labels = FALSE,
+  max_depth = 1,
+  lollipop_plot = TRUE,
+  lollipop_colors = lollipop_colors,
+  glyph_size = c(180, 130),
+  lollipop_size_scale = 0.65
 )
 
-run_pathway_shiny_app(mapping = default_data$mapping,
+print(p1)
+```
+
+# Explore the full hierarchy interactively
+
+When you want to browse many top-level pathway families before focusing on a specific one, the Shiny app is the easiest entry point.
+
+```{r, eval = FALSE}
+run_pathway_shiny_app(
+  mapping = default_data$mapping,
   g = default_data$pathway_graph,
   gene_sets = default_data$gene_sets,
-  pathway_column = NULL, # WE SET THIS TO NULL SINCE WE HAVE THE PATHWAYS AS ROWNAMES. OTHERWISE, SPECIFY THE COLUMN BY EITHER INDEX OR NAME,
+  pathway_column = NULL,
   enrichment_scores = pw_out,
   conditions = colnames(pw_out),
-  enrichment_limits = NULL,
   glyph_size = c(80, 60),
   res = 96,
   hide_nodes_without_enrichment = TRUE,
+  lollipop_plot = TRUE,
+  lollipop_colors = lollipop_colors,
   layout_options_plot = list(
     layout = "layout_with_kk",
     physics = FALSE,
@@ -173,3 +251,8 @@ run_pathway_shiny_app(mapping = default_data$mapping,
   )
 )
 ```
+
+# Summary
+
+The essential requirement for `supervisoR` is a pathway-by-condition matrix aligned to a hierarchy. In this vignette the matrix came from RNA-seq differential expression followed by pathway analysis, but the same visualization workflow applies to other pathway scoring approaches as long as the output is a signed pathway-level score per condition.
+

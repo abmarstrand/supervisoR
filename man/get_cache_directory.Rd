@@ -2,20 +2,24 @@
 % Please edit documentation in R/utility.R
 \name{get_cache_directory}
 \alias{get_cache_directory}
-\title{Get or Create the Cache Directory}
+\title{Create or return a glyph cache directory}
 \usage{
 get_cache_directory(cache_dir = file.path(tempdir(), "glyph_cache"))
 }
 \arguments{
-\item{cache_dir}{Character string specifying the directory to store cached glyphs. Default is \code{"glyph_cache"}.}
+\item{cache_dir}{Directory path to use for glyph caching.}
 }
 \value{
-A character string representing the path to the cache directory.
+Character scalar giving the cache directory path.
 }
 \description{
-Ensures that the specified cache directory exists. If it doesn't, the function creates it.
+Ensure that a directory exists and return its path. This is a small utility
+used by \code{\link[=generate_glyph_images_cached]{generate_glyph_images_cached()}} and the Shiny app.
 }
 \examples{
-cache_path <- get_cache_directory("my_cache")
-
+cache_path <- get_cache_directory(file.path(tempdir(), "my_cache"))
+dir.exists(cache_path)
+}
+\seealso{
+\code{\link[=generate_glyph_images_cached]{generate_glyph_images_cached()}}
 }

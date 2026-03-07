@@ -2,19 +2,25 @@
 % Please edit documentation in R/utility.R
 \name{sanitize_filename}
 \alias{sanitize_filename}
-\title{Sanitize filename}
+\title{Sanitize a string for use as a filename}
 \usage{
 sanitize_filename(name)
 }
 \arguments{
-\item{name}{Character string representing the filename to sanitize.}
+\item{name}{Character vector to sanitize.}
 }
 \value{
-A sanitized filename string.
+Character vector with disallowed filename characters replaced by
+underscores.
 }
 \description{
-Replaces invalid characters in a filename with underscores.
+Replace characters outside letters, digits, underscores, and hyphens with
+underscores. This is mainly used to create stable cache filenames for pathway
+glyph images.
 }
 \examples{
 sanitize_filename("path/to/file name with spaces.txt")
+}
+\seealso{
+\code{\link[=get_cache_directory]{get_cache_directory()}}
 }

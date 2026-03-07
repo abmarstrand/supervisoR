@@ -2,7 +2,7 @@
 % Please edit documentation in R/preprocessing.R
 \name{load_and_preprocess_gene_sets}
 \alias{load_and_preprocess_gene_sets}
-\title{Load and preprocess gene sets and pathway relations}
+\title{Build a pathway graph from custom gene sets and relations}
 \usage{
 load_and_preprocess_gene_sets(
   gene_sets,
@@ -11,15 +11,43 @@ load_and_preprocess_gene_sets(
 )
 }
 \arguments{
-\item{gene_sets}{Named list of gene sets, with pathways as names and genes as elements.}
+\item{gene_sets}{Named list of gene vectors. List names are treated as the
+pathway names shown to the user.}
 
-\item{pathways_relation}{Data frame with two columns: 'parent' and 'child' pathways.}
+\item{pathways_relation}{Data frame containing at least \code{parent} and \code{child}
+columns describing the directed pathway hierarchy.}
 
-\item{translation_layer}{Optional data frame with two columns: 'gene_sets_name' and 'relation_name'.}
+\item{translation_layer}{Optional two-column data frame that maps gene-set
+names to relation-layer identifiers. The first column should match names in
+\code{gene_sets}; the second should match the identifiers used in
+\code{pathways_relation}.}
 }
 \value{
-A list containing gene sets, mapping data frame and the pathway graph.
+A list with \code{gene_sets}, \code{mapping}, and \code{pathway_graph} elements.
 }
 \description{
-Load and preprocess gene sets and pathway relations
+Convert user-supplied pathway gene sets and parent-child relations into the
+internal objects used throughout the package.
+}
+\details{
+Use this function when you have your own pathway collection and want to use
+the plotting and Shiny interfaces without relying on the built-in Reactome or
+GO resources.
+
+\code{gene_sets} must be a named list whose names are the human-readable pathway
+names you want to use in plots. \code{pathways_relation} should contain pathway
+identifiers used in the graph edges. If those identifiers differ from the
+names in \code{gene_sets}, provide \code{translation_layer} to link them.
+}
+\examples{
+gene_sets <- list(
+  Glycolysis = c("HK1", "PFKM", "PKM"),
+  TCA = c("CS", "ACO2", "IDH3A")
+)
+pathways_relation <- data.frame(parent = "Glycolysis", child = "TCA")
+prep <- load_and_preprocess_gene_sets(gene_sets, pathways_relation)
+prep$mapping
+}
+\seealso{
+\code{\link[=load_default_data]{load_default_data()}}, \code{\link[=plot_subgraph]{plot_subgraph()}}
 }

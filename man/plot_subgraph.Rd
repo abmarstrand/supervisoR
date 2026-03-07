@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot_pathway.R
 \name{plot_subgraph}
 \alias{plot_subgraph}
-\title{Plot a Subgraph with Glyphs as Nodes}
+\title{Plot a pathway subgraph}
 \usage{
 plot_subgraph(
   parent_geneset_name,
@@ -34,73 +34,157 @@ plot_subgraph(
   lollipop_plot = FALSE,
   lollipop_colors = NULL,
   lollipop_significance = FALSE,
-  significance_cutoff = 0.05
+  significance_cutoff = 0.05,
+  lollipop_size_scale = 1,
+  repel = NULL
 )
 }
 \arguments{
-\item{parent_geneset_name}{Name of the parent geneset.}
+\item{parent_geneset_name}{Character scalar giving the pathway to plot. This
+should use the processed pathway names shown in the mapping table.}
 
-\item{enrichment_scores}{Dataframe of enrichment scores.}
+\item{enrichment_scores}{Optional data frame of enrichment scores. Rows must
+correspond to pathways and columns to conditions after any \code{pathway_column}
+processing.}
 
-\item{conditions}{Character vector of conditions to include.}
+\item{conditions}{Optional character vector of conditions to plot. If \code{NULL},
+all available condition columns are used.}
 
-\item{significance_scores}{Optional dataframe of significance scores.}
+\item{significance_scores}{Optional data frame of significance values aligned
+with \code{enrichment_scores}.}
 
-\item{pathway_column}{Character, integer or NULL for pathway name column. Defaults to 1L.}
+\item{pathway_column}{Column index, column name, or \code{NULL} describing where
+pathway names are stored in \code{enrichment_scores} and \code{significance_scores}.
+Use \code{NULL} when row names already contain pathway names.}
 
-\item{species}{Species string. Default "Homo sapiens".}
+\item{species}{Species passed to \code{\link[=load_default_data]{load_default_data()}} when default resources
+are loaded automatically.}
 
-\item{database}{Database string. Default "reactome".}
+\item{database}{Database passed to \code{\link[=load_default_data]{load_default_data()}}. Supported built-in
+values are currently \code{"reactome"} and \code{"GO"}.}
 
-\item{mapping}{Optional mapping data frame.}
+\item{mapping}{Optional mapping data frame with \code{processed_name} and
+\code{exact_source} columns.}
 
-\item{g}{Optional igraph object.}
+\item{g}{Optional pathway graph as an \code{igraph} object.}
 
-\item{gene_sets}{Optional list of gene sets.}
+\item{gene_sets}{Optional named list of pathway gene sets.}
 
-\item{layout}{Layout algorithm. Default "kk".}
+\item{layout}{Layout algorithm passed to \code{ggraph::create_layout()}.}
 
-\item{circular}{Logical for circular layout. Default FALSE.}
+\item{circular}{Logical; if \code{TRUE}, request a circular layout.}
 
-\item{hide_nodes_without_enrichment}{Logical. Default FALSE.}
+\item{hide_nodes_without_enrichment}{Logical; if \code{TRUE}, remove nodes for
+which all selected enrichment values are missing.}
 
-\item{enrichment_limits}{Numeric vector of length 2 or NULL.}
+\item{enrichment_limits}{Optional numeric vector of length 2 controlling the
+color scale and y-axis limits. When \code{NULL}, limits are inferred from the
+visible scores.}
 
-\item{use_node_label}{Logical. Default TRUE.}
+\item{use_node_label}{Logical; if \code{TRUE}, pathway labels are drawn next to the
+nodes.}
 
-\item{reference}{Optional reference condition string.}
+\item{reference}{Optional condition name to subtract from every selected
+condition before plotting.}
 
-\item{adjust_edge_thickness}{Logical. Default FALSE.}
+\item{adjust_edge_thickness}{Logical; if \code{TRUE}, scale edge thickness by gene
+set overlap.}
 
-\item{edge_percentage_labels}{Logical. Default FALSE.}
+\item{edge_percentage_labels}{Logical; if \code{TRUE}, annotate edges with the
+percentage overlap relative to the parent/source pathway gene set.}
 
-\item{glyph_size}{Numeric vector for glyph size. Default c(80, 60).}
+\item{glyph_size}{Numeric vector of length 2 giving glyph width and height in
+pixels.}
 
-\item{res}{Numeric resolution. Default 96.}
+\item{res}{Numeric rendering resolution in dpi.}
 
-\item{legend_position}{Optional legend position string or "none".}
+\item{legend_position}{Legend position passed into the assembled plot. Use
+\code{"none"} to suppress legends.}
 
-\item{label_wrap_width}{Integer for label wrapping. Default 40.}
+\item{label_wrap_width}{Integer width used to wrap node labels.}
 
-\item{edge_arrows}{Logical for arrows. Default TRUE.}
+\item{edge_arrows}{Logical; if \code{TRUE}, draw arrowheads on edges.}
 
-\item{repel_labels}{Logical. Default FALSE.}
+\item{repel_labels}{Logical; if \code{TRUE}, use \code{ggrepel} for node labels.}
 
-\item{node_label_size}{Numeric label size. Default 1.}
+\item{node_label_size}{Numeric label size.}
 
-\item{max_depth}{Integer max depth or NULL.}
+\item{max_depth}{Optional non-negative integer. When supplied, the plot is
+truncated to descendants within that graph distance and ellipsis nodes are
+added where deeper descendants were removed.}
 
-\item{lollipop_plot}{Logical. Default FALSE.}
+\item{lollipop_plot}{Logical; if \code{TRUE}, multi-condition glyphs use a lollipop
+representation. Otherwise they use a bar representation.}
 
-\item{lollipop_colors}{Optional named color list.}
+\item{lollipop_colors}{Optional named character vector mapping condition names
+to colors.}
 
-\item{lollipop_significance}{Logical. Default FALSE.}
+\item{lollipop_significance}{Logical; if \code{TRUE}, encode significance inside
+lollipop glyphs.}
 
-\item{significance_cutoff}{Numeric. Default 0.05.}
+\item{significance_cutoff}{Numeric significance threshold used when
+\code{lollipop_significance = TRUE}.}
+
+\item{lollipop_size_scale}{Numeric scalar that scales both the lollipop stem
+width and point size inside pathway glyphs. Values above \code{1} enlarge the
+lollipops and values below \code{1} shrink them.}
+
+\item{repel}{Deprecated alias for \code{repel_labels}.}
 }
 \value{
-A ggplot object representing the subgraph.
+A \code{ggplot} object representing the selected pathway subgraph.
 }
 \description{
-Plot a Subgraph with Glyphs as Nodes
+Visualize a pathway and all of its descendants as a graph. When multiple
+conditions are supplied, nodes are rendered as pathway glyphs summarizing the
+enrichment profile across conditions. When exactly one condition is supplied,
+nodes are drawn as colored circles whose size scales with the absolute score.
+}
+\details{
+This is the main static plotting function in the package. It can work either
+with custom graph objects supplied through \code{mapping}, \code{g}, and \code{gene_sets}, or
+it can lazily load the built-in Reactome/GO resources through
+\code{\link[=load_default_data]{load_default_data()}}.
+
+\code{enrichment_scores} may be provided in one of two ways:
+\itemize{
+\item pathway names already stored in \code{rownames(enrichment_scores)} and
+\code{pathway_column = NULL}
+\item pathway names stored in one column of \code{enrichment_scores}, in which case
+\code{pathway_column} must point to that column
+}
+
+Pathway names are matched against \code{mapping$processed_name}, not the internal
+\code{exact_source} identifiers.
+}
+\examples{
+gene_sets <- list(
+  Parent = c("G1", "G2", "G3"),
+  ChildA = c("G1", "G2"),
+  ChildB = c("G3", "G4")
+)
+relations <- data.frame(
+  parent = c("Parent", "Parent"),
+  child = c("ChildA", "ChildB")
+)
+prep <- load_and_preprocess_gene_sets(gene_sets, relations)
+scores <- data.frame(
+  cond1 = c(1.2, 0.4, -0.8),
+  cond2 = c(0.7, -0.2, -1.1),
+  row.names = c("Parent", "ChildA", "ChildB")
+)
+plot_subgraph(
+  parent_geneset_name = "Parent",
+  enrichment_scores = scores,
+  conditions = c("cond1", "cond2"),
+  pathway_column = NULL,
+  mapping = prep$mapping,
+  g = prep$pathway_graph,
+  gene_sets = prep$gene_sets,
+  lollipop_plot = TRUE
+)
+}
+\seealso{
+\code{\link[=load_default_data]{load_default_data()}}, \code{\link[=load_and_preprocess_gene_sets]{load_and_preprocess_gene_sets()}},
+\code{\link[=run_pathway_shiny_app]{run_pathway_shiny_app()}}
 }

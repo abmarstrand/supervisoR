@@ -2,7 +2,7 @@
 % Please edit documentation in R/glyph_functions.R
 \name{create_glyph_on_the_fly}
 \alias{create_glyph_on_the_fly}
-\title{Create a glyph for a pathway on-the-fly}
+\title{Create a pathway glyph for one pathway}
 \usage{
 create_glyph_on_the_fly(
   pathway,
@@ -15,50 +15,92 @@ create_glyph_on_the_fly(
   lollipop_plot = TRUE,
   lollipop_colors = NULL,
   lollipop_significance = FALSE,
-  significance_cutoff = 0.05
+  significance_cutoff = 0.05,
+  lollipop_size_scale = 1
 )
 }
 \arguments{
-\item{pathway}{Character string representing the pathway name.}
+\item{pathway}{Character scalar giving the pathway to draw. This must match a
+row name in \code{enrichment_scores}.}
 
-\item{conditions}{Character vector of conditions to include in the glyph.}
+\item{conditions}{Character vector of condition columns to include. If \code{NULL}
+or empty, all columns in \code{enrichment_scores} are used.}
 
-\item{enrichment_scores}{Data frame of enrichment scores (rows are pathways, columns are conditions).}
+\item{enrichment_scores}{Data frame of enrichment scores with pathways in rows
+and conditions in columns.}
 
-\item{enrichment_limits}{Numeric vector of length 2 specifying the enrichment limits.}
+\item{enrichment_limits}{Numeric vector of length 2 giving the y-axis/color
+scale limits. When \code{NULL}, limits are computed from the supplied scores.}
 
-\item{significance_scores}{Optional data frame of significance scores (e.g. p-values). Must match the structure of enrichment_scores.}
+\item{significance_scores}{Optional data frame of significance values for the
+same pathways and conditions as \code{enrichment_scores}. Values less than or
+equal to \code{significance_cutoff} are marked as significant when
+\code{lollipop_significance = TRUE}.}
 
-\item{glyph_size}{Numeric vector specifying the width and height of the glyph in pixels. Default is \code{c(80, 60)}.}
+\item{glyph_size}{Numeric vector of length 2 giving glyph width and height in
+pixels.}
 
-\item{res}{Numeric value specifying the resolution of the image in dpi. Default is 96.}
+\item{res}{Numeric output resolution in dpi.}
 
-\item{lollipop_plot}{Logical specifying whether we should create lollipop plots. Default is \code{TRUE}.}
+\item{lollipop_plot}{Logical; if \code{TRUE}, use a lollipop glyph, otherwise use a
+small bar chart.}
 
-\item{lollipop_colors}{Optional named list, specifies the colors of conditions in the lollipop plot.}
+\item{lollipop_colors}{Optional named character vector mapping condition names
+to colors. When \code{NULL}, colors are mapped to enrichment values.}
 
-\item{lollipop_significance}{Logical specifying whether significance should be indicated. Default is \code{FALSE}.}
+\item{lollipop_significance}{Logical; if \code{TRUE} and \code{significance_scores} is
+supplied, point shapes indicate significance.}
 
-\item{significance_cutoff}{Numeric cutoff for significance. Default is 0.05.}
+\item{significance_cutoff}{Numeric cutoff used to classify significance.}
+
+\item{lollipop_size_scale}{Numeric scalar that scales both the lollipop stem
+width and point size. Values above \code{1} enlarge the glyph internals and
+values below \code{1} shrink them.}
 }
 \value{
-A magick image representing the glyph for the pathway as well as the local path to the image.
+A list of length 2. The first element is a \code{magick-image} object and
+the second element is the temporary PNG filename used to create it.
 }
 \description{
-Generates a glyph for a single pathway by creating a bar plot of enrichment scores across specified conditions.
+Build a compact per-pathway summary graphic that can be embedded inside a
+pathway graph or shown on its own. When more than one condition is supplied,
+the glyph is typically used as the node image in \code{\link[=plot_subgraph]{plot_subgraph()}} or the
+Shiny app. With \code{lollipop_plot = TRUE}, the glyph shows one lollipop per
+condition. With \code{lollipop_plot = FALSE}, it shows a small bar chart instead.
+}
+\details{
+\code{enrichment_scores} must be a data frame whose row names are pathway names and
+whose columns are condition names. \code{pathway} must match one of those row
+names. If \code{significance_scores} is supplied, it must use the same row/column
+convention. The function returns both the in-memory magick image and the
+temporary PNG path written to disk.
+
+This is a low-level helper that is useful when you want to inspect or reuse a
+single glyph outside the full graph plotting workflow.
 }
 \examples{
-# Example usage:
-\donttest{
 pathway <- "Pathway1"
 conditions <- c("Condition1", "Condition2")
 enrichment_scores <- data.frame(
   Condition1 = c(1.2, -0.5),
-  Condition2 = c(0.8, 1.1)
+  Condition2 = c(0.8, 1.1),
+  row.names = c("Pathway1", "Pathway2")
 )
-rownames(enrichment_scores) <- c("Pathway1", "Pathway2")
-enrichment_limits <- c(-1, 2)
-glyph <- create_glyph_on_the_fly(pathway, conditions,
-  enrichment_scores, enrichment_limits)
+significance_scores <- data.frame(
+  Condition1 = c(0.01, 0.20),
+  Condition2 = c(0.04, 0.30),
+  row.names = c("Pathway1", "Pathway2")
+)
+glyph <- create_glyph_on_the_fly(
+  pathway = pathway,
+  conditions = conditions,
+  enrichment_scores = enrichment_scores,
+  enrichment_limits = c(-2, 2),
+  significance_scores = significance_scores,
+  lollipop_significance = TRUE
+)
+glyph[[1]]
 }
+\seealso{
+\code{\link[=generate_glyph_images_cached]{generate_glyph_images_cached()}}, \code{\link[=plot_subgraph]{plot_subgraph()}}
 }

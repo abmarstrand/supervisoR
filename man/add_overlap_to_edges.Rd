@@ -2,18 +2,40 @@
 % Please edit documentation in R/preprocessing.R
 \name{add_overlap_to_edges}
 \alias{add_overlap_to_edges}
-\title{Add overlap information to edges}
+\title{Add gene-set overlap information to graph edges}
 \usage{
 add_overlap_to_edges(g, gene_sets)
 }
 \arguments{
-\item{g}{The pathway graph (igraph object).}
+\item{g}{Pathway graph as an \code{igraph} object. Vertices must already contain a
+\code{genes} attribute.}
 
-\item{gene_sets}{A named list of gene sets.}
+\item{gene_sets}{Named list of gene sets. This is included for API symmetry
+with the rest of the package; overlap is derived from the vertex \code{genes}
+attributes on \code{g}.}
 }
 \value{
-The graph with overlap information added to edges.
+The input graph with \code{overlap} and \code{percent_overlap} edge attributes
+added.
 }
 \description{
-Add overlap information to edges
+Compute the number of shared genes between the source and target pathway of
+every edge in a pathway graph and store the results as edge attributes.
+}
+\details{
+The function adds two edge attributes to \code{g}: \code{overlap}, the number of shared
+genes, and \code{percent_overlap}, the overlap as a percentage of the source
+pathway gene-set size.
+}
+\examples{
+gene_sets <- list(Parent = c("G1", "G2"), Child = c("G2", "G3"))
+prep <- load_and_preprocess_gene_sets(
+  gene_sets,
+  data.frame(parent = "Parent", child = "Child")
+)
+g2 <- add_overlap_to_edges(prep$pathway_graph, prep$gene_sets)
+igraph::edge_attr(g2, "overlap")
+}
+\seealso{
+\code{\link[=plot_subgraph]{plot_subgraph()}}
 }

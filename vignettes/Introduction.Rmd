@@ -20,231 +20,249 @@ knitr::opts_chunk$set(
 
 # Introduction
 
-supervisoR is an R package designed for visualizing the enrichment of biological pathways and/or genes across conditions. This vignette explains the basic functionalities of the package, guiding you through data preparation and various visualization techniques.
+`supervisoR` is an R package for displaying pathway-level results on **hierarchical pathway or ontology graphs**. The package is aimed at analyses where you want to keep pathway relationships visible while comparing many conditions at once.
 
-# Installing and loading the package
+This vignette covers four common use cases. First, it shows how to generate example inputs using the built-in Reactome or GO hierarchies. Second, it demonstrates static subgraph plots for both single-condition and multi-condition analyses. Third, it shows how to use significance-aware lollipop glyphs. Finally, it shows how to launch the interactive Shiny browser.
+
+# Load the package
 
 ```{r setup}
 library(supervisoR)
-library(magrittr)
 ```
 
-# Data preparation
-## Loading Example Enrichment Scores
+# Load a default hierarchy
+
+The package includes helpers for Reactome and GO biological process hierarchies.
 
 ```{r}
-# First we define which database and species we want to look at. Currently, the "reactome" and "GO" are supported through the MsigDB databases. Human ("Homo sapiens") and ("Mus musculus") are currently supported. However, custom data can be provided - see the final part of this vignette for an example using the included data. We recommend that you use one of the provided gene_sets for your pathway analysis for easy interoperability. 
+database <- "reactome"
+species <- "Homo sapiens"
 
-database = "reactome"
-species = "Homo sapiens"
-
-# Load the default included data to generate example dataset
 default_data <- load_default_data(database = database, species = species)
 
+names(default_data)
+length(default_data$gene_sets)
+head(default_data$mapping)
+```
 
-# Generate example dataset. Note that the example data is randomly generated using rnorm(length(gene_sets), sd = 0.25) and thus does not reflect real conditions or output from a pathway analysis.
-enrichment_scores <- data.frame(Condition.1 = rnorm(length(default_data$gene_sets), sd = 0.25),
-                                Condition.2 = rnorm(length(default_data$gene_sets), sd = 0.25),
-                                Condition.3 = rnorm(length(default_data$gene_sets), sd = 0.25),
-                                Condition.4 = rnorm(length(default_data$gene_sets), sd = 0.25))
+The returned object contains a named list of gene sets, a mapping table between human-readable pathway names and hierarchy IDs, the pathway graph itself, and the relation table used to build the graph.
+
+# Create a reproducible toy enrichment table
+
+For demonstration purposes we simulate a small multi-condition enrichment matrix. The simulated values are not biologically meaningful, but they are convenient for learning the plotting API.
+
+```{r}
+set.seed(42)
+
+enrichment_scores <- data.frame(
+  Condition_1 = rnorm(length(default_data$gene_sets), sd = 0.35),
+  Condition_2 = rnorm(length(default_data$gene_sets), sd = 0.35),
+  Condition_3 = rnorm(length(default_data$gene_sets), sd = 0.35),
+  Condition_4 = rnorm(length(default_data$gene_sets), sd = 0.35)
+)
 rownames(enrichment_scores) <- names(default_data$gene_sets)
 conditions <- colnames(enrichment_scores)
+
+significance_scores <- data.frame(
+  Condition_1 = runif(length(default_data$gene_sets), max = 0.25),
+  Condition_2 = runif(length(default_data$gene_sets), max = 0.25),
+  Condition_3 = runif(length(default_data$gene_sets), max = 0.25),
+  Condition_4 = runif(length(default_data$gene_sets), max = 0.25)
+)
+rownames(significance_scores) <- names(default_data$gene_sets)
 ```
 
-# Visualizing Pathways
+# What the plotting functions expect
 
-## Plotting a Subgraph with Glyphs
+The main plotting functions assume that pathway names are either row names or stored in a dedicated column. In this vignette they are row names, so we set `pathway_column = NULL`. If your enrichment table stores pathway names in the first column instead, you can leave `pathway_column = 1L` or pass the column name directly.
+
+The package works especially well with signed pathway statistics, such as normalized enrichment scores or signed summary statistics, because the sign can be displayed directly with color and lollipop/bar direction.
+
+# Multi-condition glyph plot
+
+The core plotting function is `plot_subgraph()`. For multiple conditions, each node is rendered as a compact glyph summarizing all selected conditions.
 
 ```{r}
-# Define the parent pathway name. Select an example below depending on whether it is a reactome or GO graph.
-parent_name <- "Signaling By Tgfb Family Members" # REACTOME
-# parent_name <- "Polysaccharide Metabolic Process" #GO
+parent_name <- "Signaling By Tgfb Family Members"
 
-# Plotting multiple conditions
-p1 <- plot_subgraph(
+p_multi <- plot_subgraph(
   parent_geneset_name = parent_name,
-  database = database,
-  species = species,
   enrichment_scores = enrichment_scores,
   conditions = conditions,
-  pathway_column = NULL, # WE SET THIS TO NULL SINCE WE HAVE THE PATHWAYS AS ROWNAMES. OTHERWISE, SPECIFY THE COLUMN BY EITHER INDEX OR NAME
+  pathway_column = NULL,
+  database = database,
+  species = species,
   layout = "kk",
   hide_nodes_without_enrichment = TRUE,
-  enrichment_limits = NULL,
+  glyph_size = c(190, 140),
   use_node_label = TRUE,
-  glyph_size = c(200, 160)
+  repel_labels = FALSE
 )
 
-print(p1)
+print(p_multi)
 ```
+This is the default view to use when comparing several contrasts at once. The glyphs preserve direction and relative magnitude for each condition while the graph keeps the pathway hierarchy visible.
 
-## Plotting multiple conditions relative to Condition 1
+# Relative-to-reference visualization
 
-You can visualize enrichment scores relative to a specific reference condition by specifying the reference parameter.
+You can subtract a reference condition directly inside `plot_subgraph()` by setting the `reference` argument. This is useful when you want every pathway glyph to encode deviation from a shared baseline.
 
 ```{r}
-# Plotting multiple conditions relative to Condition 1
-p2 <- plot_subgraph(
+p_reference <- plot_subgraph(
   parent_geneset_name = parent_name,
   enrichment_scores = enrichment_scores,
   conditions = conditions,
-  pathway_column = NULL, # WE SET THIS TO NULL SINCE WE HAVE THE PATHWAYS AS ROWNAMES. OTHERWISE, SPECIFY THE COLUMN BY EITHER INDEX OR NAME
+  pathway_column = NULL,
   database = database,
   species = species,
   layout = "kk",
   hide_nodes_without_enrichment = TRUE,
-  enrichment_limits = NULL,
-  use_node_label = TRUE,
-  reference = "Condition.1"
+  reference = "Condition_1",
+  glyph_size = c(190, 140)
 )
 
-print(p2)
+print(p_reference)
 ```
 
-## Adjusting Edge Thickness and Adding Percentage Labels
 
-Enhance the visualization by adjusting edge thickness based on gene overlap and adding percentage labels to edges.
+# Emphasizing pathway inheritance with edge overlap
+
+If parent-child edges should reflect gene overlap, enable `adjust_edge_thickness`. You can optionally print overlap percentages as labels.
 
 ```{r}
-# Plotting multiple conditions relative to Condition 1 with edge thickness and labels
-p3 <- plot_subgraph(
+p_overlap <- plot_subgraph(
   parent_geneset_name = parent_name,
   enrichment_scores = enrichment_scores,
   conditions = conditions,
-  pathway_column = NULL, # WE SET THIS TO NULL SINCE WE HAVE THE PATHWAYS AS ROWNAMES. OTHERWISE, SPECIFY THE COLUMN BY EITHER INDEX OR NAME
+  pathway_column = NULL,
   database = database,
   species = species,
   layout = "kk",
   hide_nodes_without_enrichment = TRUE,
-  enrichment_limits = NULL,
-  use_node_label = TRUE,
-  reference = "Condition.1",
   adjust_edge_thickness = TRUE,
-  edge_percentage_labels = TRUE
+  edge_percentage_labels = TRUE,
+  glyph_size = c(180, 130)
 )
 
-print(p3)
+print(p_overlap)
 ```
 
-## Plotting a Subgraph with a Single Condition
+# Single-condition view
 
-Focus on a single condition to explore specific pathway enrichments without the complexity of multiple comparisons.
+When you pass a single condition, nodes are rendered directly as graph points colored and sized by the pathway score. This is a cleaner option when you want to focus on one contrast.
 
 ```{r}
-# Plotting a subgraph for a single condition
-p4 <- plot_subgraph(
+p_single <- plot_subgraph(
   parent_geneset_name = "Metabolism Of Lipids",
   enrichment_scores = enrichment_scores,
-  conditions = "Condition.3",
-  pathway_column = NULL, # WE SET THIS TO NULL SINCE WE HAVE THE PATHWAYS AS ROWNAMES. OTHERWISE, SPECIFY THE COLUMN BY EITHER INDEX OR NAME
+  conditions = "Condition_3",
+  pathway_column = NULL,
   database = database,
   species = species,
   layout = "fr",
   hide_nodes_without_enrichment = TRUE,
-  enrichment_limits = NULL,
   use_node_label = TRUE,
-  repel = TRUE
-)
-
-print(p4)
-```
-## Plotting a Subgraph with a Single Condition, up to three links from the root
-
-Focus on a single condition to explore specific pathway enrichments without the complexity of multiple comparisons. Here we limit the graph depth to 2
-
-```{r}
-# Plotting a subgraph for a single condition. Limit the depth of the graph to 2 to limit the confusion from too many nodes.
-p5 <- plot_subgraph(
-  parent_geneset_name = "Metabolism Of Lipids",
-  enrichment_scores = enrichment_scores,
-  conditions = "Condition.3",
-  pathway_column = NULL, # WE SET THIS TO NULL SINCE WE HAVE THE PATHWAYS AS ROWNAMES. OTHERWISE, SPECIFY THE COLUMN BY EITHER INDEX OR NAME
-  database = database,
-  species = species,
-  layout = "fr",
-  hide_nodes_without_enrichment = TRUE,
-  enrichment_limits = NULL,
-  use_node_label = TRUE,
-  repel = TRUE,
+  repel_labels = TRUE,
   max_depth = 2
 )
 
-print(p5)
+print(p_single)
 ```
+# Lollipop glyphs for many conditions
 
-## Plotting the subgraph with a lollipop plot, enabling easy distinction of many conditions
-
-Lollipop plots enable easier distinction of different conditions, enabling us to provide individual colors to conditions while retaining some information about direction of regulation. Some regulation strength fidelity is lost.
+When you need to compare many conditions, lollipop glyphs usually separate the conditions more clearly than small bar plots. You can also assign stable, user-defined colors to the condition identities.
 
 ```{r}
-p6 <- plot_subgraph(
+lollipop_colors <- c(
+  Condition_1 = "#CC6677",
+  Condition_2 = "#332288",
+  Condition_3 = "#44AA99",
+  Condition_4 = "#999933"
+)
+
+p_lollipop <- plot_subgraph(
   parent_geneset_name = "Metabolism Of Lipids",
   enrichment_scores = enrichment_scores,
   conditions = conditions,
-  pathway_column = NULL, # WE SET THIS TO NULL SINCE WE HAVE THE PATHWAYS AS ROWNAMES. OTHERWISE, SPECIFY THE COLUMN BY EITHER INDEX OR NAME
+  pathway_column = NULL,
   database = database,
   species = species,
   layout = "fr",
   hide_nodes_without_enrichment = TRUE,
-  enrichment_limits = NULL,
-  use_node_label = TRUE,
-  repel = TRUE,
   max_depth = 1,
-  lollipop_plot = T,
-  lollipop_colors = c("Condition.1" = "#CC6677", "Condition.2" = "#332288",
-                      "Condition.3" = "#44AA99", "Condition.4" = "#999933")
+  lollipop_plot = TRUE,
+  lollipop_colors = lollipop_colors,
+  glyph_size = c(180, 130)
 )
 
-print(p6)
+print(p_lollipop)
 ```
 
-## Plotting a subgraph with a lollipop plot, including significances
+# Lollipop glyphs with significance
 
-By changing the shape of the points in the lollipop plot, we can also plot whether a given pathway is significance in a given condition. Here, we provide random p-values. The p-value dataframe must be formatted in the same way as the enrichment score dataframe, including where pathway names are located. The cutoff for significance can be changed, but defaults to 0.05.
+If you also have p-values or adjusted p-values per pathway and condition, you can display significance in the lollipop glyphs by changing the point symbols.
+
 ```{r}
-significance_scores <- data.frame(Condition.1 = sample(seq(0,1,by = 0.0001),length(default_data$gene_sets)),
-                                Condition.2 = sample(seq(0,1,by = 0.0001),length(default_data$gene_sets)),
-                                Condition.3 = sample(seq(0,1,by = 0.0001),length(default_data$gene_sets)),
-                                Condition.4 = sample(seq(0,1,by = 0.0001),length(default_data$gene_sets)))
-rownames(significance_scores) <- names(default_data$gene_sets)
-
-p7 <- plot_subgraph(
+p_lollipop_sig <- plot_subgraph(
   parent_geneset_name = "Metabolism Of Lipids",
   enrichment_scores = enrichment_scores,
-  conditions = conditions,
   significance_scores = significance_scores,
-  pathway_column = NULL, # WE SET THIS TO NULL SINCE WE HAVE THE PATHWAYS AS ROWNAMES. OTHERWISE, SPECIFY THE COLUMN BY EITHER INDEX OR NAME
+  conditions = conditions,
+  pathway_column = NULL,
   database = database,
   species = species,
   layout = "fr",
   hide_nodes_without_enrichment = TRUE,
-  enrichment_limits = NULL,
-  use_node_label = TRUE,
-  repel = TRUE,
   max_depth = 1,
-  lollipop_plot = T,
-  lollipop_colors = c("Condition.1" = "#CC6677", "Condition.2" = "#332288",
-                      "Condition.3" = "#44AA99", "Condition.4" = "#999933"),
-  lollipop_significance = T
+  lollipop_plot = TRUE,
+  lollipop_colors = lollipop_colors,
+  lollipop_significance = TRUE,
+  significance_cutoff = 0.05,
+  glyph_size = c(180, 130)
 )
 
-print(p7)
+print(p_lollipop_sig)
+```
+
+# Using custom hierarchy data
+
+You are not limited to the built-in Reactome and GO hierarchies. If you already have your own gene-set collection and a parent-child relation table, preprocess it once and reuse the returned objects.
+
+```{r, eval = FALSE}
+custom_data <- load_and_preprocess_gene_sets(
+  gene_sets = my_gene_sets,
+  pathways_relation = my_relations,
+  translation_layer = my_translation_layer
+)
+
+plot_subgraph(
+  parent_geneset_name = "My Pathway",
+  enrichment_scores = my_scores,
+  conditions = colnames(my_scores),
+  pathway_column = NULL,
+  mapping = custom_data$mapping,
+  g = custom_data$pathway_graph,
+  gene_sets = custom_data$gene_sets
+)
 ```
 
 
-## Using a shiny app to explore the full pathway set.
+# Interactive exploration with Shiny
 
-If you don't know where to start, a shiny app is available to explore the pathway set interactively. This includes most of the options found in the static plots.
+When you want to browse the full hierarchy interactively, use `run_pathway_shiny_app()`. The app supports pathway search, gene search, drill-down into children, reset/back navigation, and glyph caching. Note that this 
 
-```{r, out.width = "200%"}
-run_pathway_shiny_app(enrichment_scores,
-  conditions,
-  pathway_column = NULL, # WE SET THIS TO NULL SINCE WE HAVE THE PATHWAYS AS ROWNAMES. OTHERWISE, SPECIFY THE COLUMN BY EITHER INDEX OR NAME
+```{r, eval = FALSE}
+run_pathway_shiny_app(
+  enrichment_scores = enrichment_scores,
+  conditions = conditions,
+  pathway_column = NULL,
   database = database,
   species = species,
-  enrichment_limits = NULL,
   glyph_size = c(80, 60),
   res = 96,
+  hide_nodes_without_enrichment = TRUE,
+  lollipop_plot = TRUE,
+  lollipop_colors = lollipop_colors,
   layout_options_plot = list(
     layout = "layout_with_kk",
     physics = FALSE,
@@ -255,83 +273,8 @@ run_pathway_shiny_app(enrichment_scores,
   )
 )
 ```
+# Summary
 
-## Using a shiny app to explore the full pathway set. This time with lollipop plots
+`supervisoR` is designed for pathway interpretation. The package is strongest when you want to compare many related pathways without losing the hierarchy that connects them. Use `plot_subgraph()` for targeted figures, and use `run_pathway_shiny_app()` for exploratory navigation across the full graph.
 
-If you don't know where to start, a shiny app is available to explore the pathway set interactively. This includes most of the options found in the static plots.
 
-```{r, out.width = "200%"}
-run_pathway_shiny_app(enrichment_scores,
-  conditions,
-  pathway_column = NULL, # WE SET THIS TO NULL SINCE WE HAVE THE PATHWAYS AS ROWNAMES. OTHERWISE, SPECIFY THE COLUMN BY EITHER INDEX OR NAME
-  database = database,
-  species = species,
-  enrichment_limits = NULL,
-  glyph_size = c(80, 60),
-  res = 96,
-  layout_options_plot = list(
-    layout = "layout_with_kk",
-    physics = FALSE,
-    smooth = FALSE,
-    type = "full",
-    randomSeed = 42,
-    options = NULL
-  ),
-  lollipop_plot = T,
-  lollipop_colors = c("Condition.1" = "#CC6677", "Condition.2" = "#332288",
-                      "Condition.3" = "#44AA99", "Condition.4" = "#999933")
-)
-```
-
-# Using custom pathway data
-## Creating custom pathway graph, gene_sets and mapping. Here, the default package data is used but any data of a similar format should work
-```{r}
-# Load the default data for analyses (MsigDB REACTOME dataset or MsigDB GOBP terms). This data is already preprocessed, but we will use it as an example of how the data should look.
-default_data <- load_default_data(database = "reactome", species = "Homo sapiens")
-
-# Extract components from the loaded data
-gene_sets <- default_data$gene_sets
-relations <- default_data$relations
-
-# Create translation layer mapping 
-trans <- data.frame(
-  gene_sets_name = default_data$mapping$processed_name,
-  relation_name = default_data$mapping$exact_source,
-  stringsAsFactors = FALSE
-)
-
-# Preprocess gene sets using the mapping and relations 
-# In order to process the data we require two things; a list of genesets and a dataframe of pathway relations. The geneset list must contain named lists of genes, with the names corresponding to the geneset. The pathway relations dataframe must contain a column named "parent" and "child", indicating which nodes in the hierarchy should be linked and how. An optional third relation column describes the relation - e.g. for GO pathways you can have a pathway regulate another.
-# A translation_layer dataframe is required if the pathway names in you relation dataframe does not match those in the geneset dataframe. It must contain two columns, gene_sets_name and relation_name.
-preprocessed_data <- load_and_preprocess_gene_sets(
-  gene_sets = gene_sets,
-  pathways_relation = relations,
-  translation_layer = trans
-)
-
-# Unpack the preprocessed data
-gene_sets <- preprocessed_data$gene_sets
-mapping <- preprocessed_data$mapping
-g <- preprocessed_data$pathway_graph
-
-p8 <- plot_subgraph(
-  parent_geneset_name = parent_name,
-  mapping = mapping,
-  g = g,
-  gene_sets = gene_sets,
-  pathway_column = NULL, # WE SET THIS TO NULL SINCE WE HAVE THE PATHWAYS AS ROWNAMES. OTHERWISE, SPECIFY THE COLUMN BY EITHER INDEX OR NAME,
-  enrichment_scores = enrichment_scores,
-  conditions = conditions,
-  layout = "kk",
-  hide_nodes_without_enrichment = TRUE,
-  enrichment_limits = NULL,
-  use_node_label = TRUE
-)
-
-print(p8)
-
-```
-
-# Conclusion
-
-This vignette demonstrated how to use supervisoR's functions to visualize pathway enrichment data. The unified plot_subgraph function provides a flexible and efficient way to generate visualizations for a specific subset of pathways. the run_pathway_shiny_app function provides a broader, interactive exploration of pathway regulation.

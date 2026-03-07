@@ -1,4 +1,18 @@
-#' Launch Pathway Visualization Shiny Application
+#' Launch the interactive pathway Shiny app
+#'
+#' Start an interactive pathway browser built on `shiny` and `visNetwork`. The
+#' app lets users browse the pathway hierarchy, search for pathways or genes,
+#' switch conditions, choose a reference condition, and inspect the same glyph
+#' encodings used in the static plotting functions.
+#'
+#' @details
+#' Like [plot_subgraph()], this function can either use custom objects supplied
+#' through `mapping`, `g`, and `gene_sets`, or it can automatically load the
+#' built-in Reactome/GO data.
+#'
+#' `enrichment_scores` must be pathway-by-condition data. If pathway names are
+#' stored in a column, point `pathway_column` to that column; otherwise set
+#' `pathway_column = NULL` and use row names.
 #'
 #' @importFrom shiny shinyApp renderUI fluidPage reactiveValues modalButton uiOutput tags HTML sidebarLayout sidebarPanel mainPanel selectInput selectizeInput updateSelectizeInput actionButton plotOutput titlePanel h4 p br reactiveVal reactive icon req observe withProgress Progress renderPlot showModal modalDialog observeEvent
 #' @importFrom shinyWidgets searchInput updateSearchInput
@@ -9,23 +23,53 @@
 #' @importFrom cowplot plot_grid
 #' @importFrom igraph degree V add_vertices induced_subgraph add_edges as_data_frame
 #' @importFrom utils head tail
-#' @param enrichment_scores A data.frame with pathways as rows and conditions as columns.
-#' @param conditions A character vector specifying the conditions to visualize.
-#' @param pathway_column Character, integer or NULL. Defaults to 1L.
-#' @param species Species string. Default "Homo sapiens".
-#' @param database Database string. Default "reactome".
+#' @param enrichment_scores Data frame with pathways in rows and conditions in
+#'   columns after any `pathway_column` processing.
+#' @param conditions Character vector of condition names to make available in the
+#'   app.
+#' @param pathway_column Column index, column name, or `NULL` specifying where
+#'   pathway names are stored in `enrichment_scores`.
+#' @param species Species passed to [load_default_data()] when built-in resources
+#'   are loaded automatically.
+#' @param database Built-in database passed to [load_default_data()].
 #' @param mapping Optional mapping data frame.
-#' @param g Optional igraph object.
-#' @param gene_sets Optional named list.
-#' @param enrichment_limits Optional numeric vector of length two.
-#' @param glyph_size Numeric vector. Default c(80, 60).
-#' @param res Numeric resolution. Default 96.
-#' @param cache_dir Character cache directory path.
-#' @param layout_options_plot List of layout options.
-#' @param hide_nodes_without_enrichment Logical. Default TRUE.
-#' @param lollipop_plot Logical. Default FALSE.
-#' @param lollipop_colors Optional named list.
-#' @return Launches a Shiny application.
+#' @param g Optional pathway graph as an `igraph` object.
+#' @param gene_sets Optional named list of pathway gene sets.
+#' @param enrichment_limits Optional numeric vector of length 2. When `NULL`, the
+#'   app computes limits from the currently selected conditions.
+#' @param glyph_size Numeric vector of length 2 giving glyph width and height in
+#'   pixels.
+#' @param res Numeric rendering resolution in dpi.
+#' @param cache_dir Directory used to cache rendered glyphs.
+#' @param layout_options_plot Named list forwarded to `visNetwork` layout
+#'   configuration.
+#' @param hide_nodes_without_enrichment Logical; if `TRUE`, remove pathways with
+#'   no scores before starting the app.
+#' @param lollipop_plot Logical; if `TRUE`, use lollipop glyphs rather than bar
+#'   glyphs.
+#' @param lollipop_colors Optional named character vector mapping conditions to
+#'   colors.
+#' @return A `shiny.appobj`. Printing or running the result launches the app.
+#' @examples
+#' \dontrun{
+#' gene_sets <- list(Parent = c("G1", "G2"), Child = c("G2", "G3"))
+#' relations <- data.frame(parent = "Parent", child = "Child")
+#' prep <- load_and_preprocess_gene_sets(gene_sets, relations)
+#' scores <- data.frame(
+#'   cond1 = c(1.0, -0.5),
+#'   cond2 = c(0.6, -0.2),
+#'   row.names = c("Parent", "Child")
+#' )
+#' run_pathway_shiny_app(
+#'   enrichment_scores = scores,
+#'   conditions = c("cond1", "cond2"),
+#'   pathway_column = NULL,
+#'   mapping = prep$mapping,
+#'   g = prep$pathway_graph,
+#'   gene_sets = prep$gene_sets
+#' )
+#' }
+#' @seealso [plot_subgraph()], [generate_glyph_images_cached()]
 #' @export
 run_pathway_shiny_app <- function(
     enrichment_scores, conditions,
@@ -99,9 +143,9 @@ run_pathway_shiny_app <- function(
         selectInput("selected_comparisons", "Select Data:", choices = conditions, selected = conditions, multiple = TRUE),
         selectInput("reference_comparison", "Select Data as Reference:", choices = c("None", conditions), selected = "None", multiple = FALSE),
         selectizeInput("search_pathway", "Search Pathway:", choices = NULL, selected = "", multiple = FALSE,
-                              options = list(placeholder = "Type to search pathways", maxOptions = 5000)),
+                       options = list(placeholder = "Type to search pathways", maxOptions = 5000)),
         selectizeInput("gene_input", "Search Gene:", choices = NULL, selected = "", multiple = FALSE,
-                              options = list(placeholder = "Type to search for a gene", maxOptions = 5000, create = FALSE, highlight = TRUE)),
+                       options = list(placeholder = "Type to search for a gene", maxOptions = 5000, create = FALSE, highlight = TRUE)),
         actionButton("gene_input_search", "Search Gene"),
         uiOutput("pathway_select_ui"),
         actionButton("reset", "Reset View"),
@@ -187,7 +231,7 @@ run_pathway_shiny_app <- function(
       withProgress(message = "Generating Glyph Images...", value = 0, {
         g_current <- current_graph()
         data_hash <- digest(list(enrichment_scores = filtered_enrichment_scores(),
-                                         conditions = selected_comparisons()), algo = "spookyhash")
+                                 conditions = selected_comparisons()), algo = "spookyhash")
         glyphs <- generate_glyph_images_cached(
           g = g_current, gene_sets = gene_sets,
           enrichment_scores = filtered_enrichment_scores(), conditions = selected_comparisons(),
@@ -356,11 +400,11 @@ run_pathway_shiny_app <- function(
       visNetwork(nodes, edges, height = "800px", width = "100%") %>%
         visEdges(arrows = arrow_dir, smooth = c(enabled = TRUE, type = "curvedCCW", roundness = 0.8)) %>%
         visNodes(shapeProperties = list(useImageSize = TRUE), shadow = FALSE,
-                             font = list(color = "black", size = nodes$font.size, face = nodes$font.face, bold = TRUE)) %>%
+                 font = list(color = "black", size = nodes$font.size, face = nodes$font.face, bold = TRUE)) %>%
         visIgraphLayout(layout = layout_options_plot$layout, type = layout_options_plot$type, physics = layout_options_plot$physics) %>%
         visOptions(highlightNearest = list(enabled = TRUE, degree = 1, hover = FALSE), nodesIdSelection = TRUE) %>%
         visInteraction(navigationButtons = TRUE, zoomView = TRUE, dragView = TRUE, multiselect = FALSE,
-                                   hoverConnectedEdges = TRUE, tooltipStay = 500) %>%
+                       hoverConnectedEdges = TRUE, tooltipStay = 500) %>%
         visEvents(
           type = "on",
           click = "function(nodes) { Shiny.setInputValue('pathway_network_selected', nodes.nodes, {priority: 'event'}); }",

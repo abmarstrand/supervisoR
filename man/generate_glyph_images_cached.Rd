@@ -2,7 +2,7 @@
 % Please edit documentation in R/glyph_functions.R
 \name{generate_glyph_images_cached}
 \alias{generate_glyph_images_cached}
-\title{Generate Glyph Images with Caching}
+\title{Generate cached glyph images for many pathways}
 \usage{
 generate_glyph_images_cached(
   g,
@@ -20,45 +20,100 @@ generate_glyph_images_cached(
   lollipop_plot = TRUE,
   lollipop_colors = NULL,
   lollipop_significance = FALSE,
-  significance_cutoff = 0.05
+  significance_cutoff = 0.05,
+  lollipop_size_scale = 1
 )
 }
 \arguments{
-\item{g}{An igraph object representing the pathway graph.}
+\item{g}{\code{igraph} object representing the pathway graph.}
 
-\item{gene_sets}{A named list of gene sets.}
+\item{gene_sets}{Named list of pathway gene sets.}
 
-\item{enrichment_scores}{A data.frame with pathways as rows and conditions as columns.}
+\item{enrichment_scores}{Data frame with pathway names in rows and condition
+names in columns.}
 
-\item{conditions}{A character vector specifying the conditions to visualize.}
+\item{conditions}{Character vector of conditions to render. If \code{NULL} or
+empty, all columns in \code{enrichment_scores} are used.}
 
-\item{mapping}{A data.frame containing mapping information.}
+\item{mapping}{Data frame containing at least \code{processed_name} and
+\code{exact_source} columns.}
 
-\item{enrichment_limits}{Optional numeric vector of length two.}
+\item{enrichment_limits}{Optional numeric vector of length 2 used for the
+glyph color and y-axis scale.}
 
-\item{significance_scores}{Optional data frame of significance scores.}
+\item{significance_scores}{Optional data frame of significance values aligned
+to \code{enrichment_scores}.}
 
-\item{glyph_size}{Optional numeric vector for glyph dimensions. Default is c(80, 60).}
+\item{glyph_size}{Numeric vector of length 2 giving glyph width and height in
+pixels.}
 
-\item{res}{Optional numeric resolution in DPI. Default is 96.}
+\item{res}{Numeric resolution in dpi.}
 
-\item{cache_dir}{Character string for cache directory.}
+\item{cache_dir}{Directory used to store rendered PNG files and the input hash.}
 
-\item{progress}{Optional Shiny progress object.}
+\item{progress}{Optional Shiny \code{Progress} object for reporting progress.}
 
-\item{force_regenerate}{Logical to force regeneration. Default is FALSE.}
+\item{force_regenerate}{Logical; if \code{TRUE}, rerender all glyphs even when the
+cache hash matches.}
 
-\item{lollipop_plot}{Logical for lollipop plot style. Default is TRUE.}
+\item{lollipop_plot}{Logical; if \code{TRUE}, glyphs are rendered as lollipop
+plots, otherwise as bar plots.}
 
-\item{lollipop_colors}{Optional named list for condition colors.}
+\item{lollipop_colors}{Optional named character vector mapping conditions to
+colors.}
 
-\item{lollipop_significance}{Logical for significance display. Default is FALSE.}
+\item{lollipop_significance}{Logical; if \code{TRUE}, encode significance in point
+shapes when significance data are available.}
 
-\item{significance_cutoff}{Numeric cutoff. Default is 0.05.}
+\item{significance_cutoff}{Numeric threshold for significance.}
+
+\item{lollipop_size_scale}{Numeric scalar that scales both the lollipop stem
+width and point size in generated glyphs.}
 }
 \value{
-A named list of base64-encoded image URIs.
+Named list of base64 data URIs, one per pathway label in the graph.
 }
 \description{
-Generate Glyph Images with Caching
+Create one glyph per pathway in a graph and store the rendered PNG files in a
+cache directory. Existing glyphs are reused when the input data hash has not
+changed, which makes repeated plotting much faster in iterative workflows and
+in the Shiny app.
+}
+\details{
+The return value is a named list of base64-encoded image URIs, suitable for
+use with packages such as \code{ggimage} or \code{visNetwork}. Names correspond to
+pathway labels in \code{V(g)$label}.
+
+\code{gene_sets} is currently accepted for interface consistency with the rest of
+the package, but glyph generation itself depends on pathway labels, selected
+conditions, and score matrices.
+}
+\examples{
+g <- igraph::graph_from_data_frame(
+  data.frame(from = "A", to = c("B", "C")),
+  directed = TRUE
+)
+igraph::V(g)$label <- c("PathwayA", "PathwayB", "PathwayC")
+gene_sets <- list(PathwayA = c("G1", "G2"), PathwayB = "G1", PathwayC = "G3")
+mapping <- data.frame(
+  processed_name = c("PathwayA", "PathwayB", "PathwayC"),
+  exact_source = c("A", "B", "C")
+)
+enrichment_scores <- data.frame(
+  cond1 = c(1.0, -0.5, 0.2),
+  cond2 = c(0.8, 0.1, -0.4),
+  row.names = c("PathwayA", "PathwayB", "PathwayC")
+)
+glyphs <- generate_glyph_images_cached(
+  g = g,
+  gene_sets = gene_sets,
+  enrichment_scores = enrichment_scores,
+  conditions = c("cond1", "cond2"),
+  mapping = mapping,
+  cache_dir = tempfile("glyph_cache_")
+)
+names(glyphs)
+}
+\seealso{
+\code{\link[=create_glyph_on_the_fly]{create_glyph_on_the_fly()}}, \code{\link[=get_cache_directory]{get_cache_directory()}}
 }

@@ -2,7 +2,7 @@
 % Please edit documentation in R/glyph_functions.R
 \name{generate_relation_legend}
 \alias{generate_relation_legend}
-\title{Generate Relation Legend Plot}
+\title{Generate a legend for pathway relations}
 \usage{
 generate_relation_legend(
   relations_present,
@@ -14,17 +14,28 @@ generate_relation_legend(
 )
 }
 \arguments{
-\item{relations_present}{A character vector of relations that are present in the current dataset.}
+\item{relations_present}{Character vector of relation labels to include, for
+example \code{c("is_a", "part_of")}.}
 
-\item{relation_colors}{A named character vector mapping each relation to a color.}
+\item{relation_colors}{Named character vector mapping relation labels to edge
+colors.}
 
-\item{relation_linetypes}{A named character vector mapping each relation to a ggplot2 linetype.}
+\item{relation_linetypes}{Named character vector mapping relation labels to
+\code{ggplot2} linetype values.}
 
-\item{textsize}{Numeric value specifying the size of the relation labels. Default is 5.}
+\item{textsize}{Numeric text size for the relation labels.}
 }
 \value{
-A ggplot object representing the relation legend.
+A \code{ggplot} object containing the relation legend.
 }
 \description{
-Generate Relation Legend Plot
+Create a small legend describing the edge relation styles used in pathway
+graphs. This is most helpful when you keep the relation-specific line colors
+or linetypes in \code{\link[=plot_subgraph]{plot_subgraph()}} and want a matching standalone legend.
+}
+\examples{
+generate_relation_legend(c("is_a", "part_of", "regulates"))
+}
+\seealso{
+\code{\link[=plot_subgraph]{plot_subgraph()}}
 }
